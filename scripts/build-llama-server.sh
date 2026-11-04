@@ -37,8 +37,14 @@ if [[ "$(uname)" == "Darwin" ]]; then
   GPU_FLAGS=(-DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON -DGGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8.5-a+fp16)
 fi
 
+# Keep the builder's home/checkout paths out of the binary (__FILE__ strings).
+PREFIX_MAP="-ffile-prefix-map=$WORK=llama.cpp -ffile-prefix-map=$ROOT=. -ffile-prefix-map=$HOME=~"
+
 cmake -S "$WORK" -B "$WORK/build" \
   -DCMAKE_BUILD_TYPE=Release \
+  "-DCMAKE_C_FLAGS=$PREFIX_MAP" \
+  "-DCMAKE_CXX_FLAGS=$PREFIX_MAP" \
+  "-DCMAKE_OBJC_FLAGS=$PREFIX_MAP" \
   -DBUILD_SHARED_LIBS=OFF \
   -DLLAMA_CURL=OFF \
   -DLLAMA_OPENSSL=OFF \

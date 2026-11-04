@@ -29,6 +29,15 @@ DMG_DIR="${BUNDLE_DIR}/dmg"
 echo "=== VoiceInk DMG builder ==="
 echo "Version: ${VERSION}  Arch: ${ARCH}"
 
+# Keep the builder's home directory and checkout path out of the shipped
+# binaries (panic locations, __FILE__ strings). Applies to Rust and to the
+# C/C++ code built by -sys crates (whisper.cpp).
+PREFIX_MAP="-ffile-prefix-map=${ROOT}=. -ffile-prefix-map=${HOME}=~"
+export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=${ROOT}=. --remap-path-prefix=${HOME}=~"
+export CFLAGS="${CFLAGS:-} ${PREFIX_MAP}"
+export CXXFLAGS="${CXXFLAGS:-} ${PREFIX_MAP}"
+export OBJCFLAGS="${OBJCFLAGS:-} ${PREFIX_MAP}"
+
 # 0. Bundled llama-server sidecar (Built-in text processor). No-op when the
 # pinned build already exists; Tauri's externalBin step fails without it.
 echo ""
