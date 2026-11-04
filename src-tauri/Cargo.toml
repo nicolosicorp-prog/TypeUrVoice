@@ -1,0 +1,53 @@
+[package]
+name = "voiceink"
+version = "0.1.0"
+description = "VoiceInk — Intelligent Voice-to-Text for Desktop"
+authors = ["VoiceInk"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/nicolosicorp-prog/TypeUrVoice"
+
+[lib]
+name = "voiceink_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri-plugin-updater = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["multipart", "json", "stream"] }
+cpal = "0.15"
+hound = "3.5"
+arboard = "3"
+rusqlite = { version = "0.32", features = ["bundled"] }
+anyhow = "1"
+dirs = "5"
+futures-util = "0.3"
+sha2 = "0.10"
+whisper-rs = { version = "0.16", optional = true }
+
+# Apple Silicon GPU acceleration for whisper.cpp. Merged with the optional
+# dependency above by Cargo, so it only applies when `local-whisper` is on.
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+whisper-rs = { version = "0.16", optional = true, features = ["metal"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+enigo = { version = "0.2", features = [] }
+
+[features]
+default = ["custom-protocol", "local-whisper"]
+custom-protocol = ["tauri/custom-protocol"]
+local-whisper = ["whisper-rs"]

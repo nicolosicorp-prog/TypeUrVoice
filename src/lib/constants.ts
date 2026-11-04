@@ -1,0 +1,26 @@
+// Czech and Slovak are the primary target languages — listed first.
+// Source language defaults to auto-detect so users can speak either.
+export const LANGUAGES = [
+  { code: 'auto', label: 'Auto-detect' },
+  { code: 'cs', label: 'Czech' },
+  { code: 'sk', label: 'Slovak' },
+  { code: 'en', label: 'English' },
+  { code: 'de', label: 'German' },
+  { code: 'pl', label: 'Polish' },
+  { code: 'uk', label: 'Ukrainian' },
+  { code: 'hu', label: 'Hungarian' },
+  { code: 'fr', label: 'French' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'it', label: 'Italian' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'nl', label: 'Dutch' },
+  { code: 'ru', label: 'Russian' },
+  { code: 'ro', label: 'Romanian' },
+  { code: 'sv', label: 'Swedish' },
+  { code: 'tr', label: 'Turkish' },
+  { code: 'zh', label: 'Chinese' },
+  { code: 'ja', label: 'Japanese' },
+  { code: 'ko', label: 'Korean' },
+  { code: 'ar', label: 'Arabic' },
+  { code: 'hi', label: 'Hindi' },
+]

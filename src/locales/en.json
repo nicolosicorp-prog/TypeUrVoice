@@ -1,0 +1,635 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "remove": "Remove",
+    "add": "Add",
+    "loading": "Loading...",
+    "continue": "Continue",
+    "skip": "Skip for now",
+    "test": "Test",
+    "testConnection": "Test connection",
+    "download": "Download",
+    "downloading": "Downloading…",
+    "dismissNotification": "Dismiss notification"
+  },
+
+  "tabs": {
+    "general": "General",
+    "engine": "Engine",
+    "output": "Output",
+    "translation": "Translation",
+    "summary": "Summary",
+    "dictionary": "Dictionary",
+    "history": "History",
+    "help": "Help"
+  },
+
+  "general": {
+    "shortcut": {
+      "primarySection": "Primary Shortcut",
+      "secondarySection": "Secondary Shortcut",
+      "shortcutLabel": "Shortcut",
+      "languageLabel": "Language",
+      "primaryAriaLabel": "Primary recording shortcut",
+      "secondaryAriaLabel": "Secondary recording shortcut",
+      "captureHint": "Press keys...",
+      "captureDescription": "Click to capture a new shortcut",
+      "languageDescription": "Language for this shortcut",
+      "enableSecondary": "Enable secondary shortcut",
+      "enableSecondaryDescription": "Record in a different language with a second shortcut",
+      "conflictError": "\"{{shortcut}}\" is already used by the {{otherField}} shortcut. Pick a different combination."
+    },
+    "microphone": {
+      "section": "Microphone",
+      "label": "Input device",
+      "systemDefault": "System default",
+      "notConnectedSuffix": "(not connected)",
+      "loadingDescription": "Loading available devices…",
+      "description": "Pick a specific microphone or use the system default.",
+      "missingWarning": "The saved device is not currently connected. VoiceInk will fall back to the system default."
+    },
+    "recording": {
+      "section": "Recording",
+      "modeLabel": "Recording mode",
+      "holdLabel": "Hold to Record",
+      "holdDescription": "Hold shortcut to record, release to stop. Best for quick messages.",
+      "toggleLabel": "Toggle (Push-to-Start)",
+      "toggleDescription": "Press once to start, press again to stop. Best for longer dictation."
+    },
+    "system": {
+      "section": "System",
+      "startOnLogin": "Start on login",
+      "startOnLoginDescription": "Launch VoiceInk when you log in",
+      "verboseDiagnostics": "Verbose diagnostics",
+      "verboseDiagnosticsDescription": "Include transcript previews in crash.log for debugging. Off by default to protect privacy.",
+      "showCrashLog": "Show crash.log",
+      "checkForUpdates": "Check for updates",
+      "checking": "Checking…",
+      "updateAvailable": "Update available: v{{version}}",
+      "upToDate": "You are on the latest version.",
+      "checkFailed": "Check failed: {{error}}"
+    }
+  },
+
+  "engine": {
+    "transcription": {
+      "section": "Transcription",
+      "cloudTitle": "Cloud (Whisper)",
+      "cloudDesc": "Best accuracy · 90+ languages",
+      "localTitle": "Local (Whisper)",
+      "localDesc": "Fully offline · Private",
+      "cloudProviderLabel": "Cloud Whisper provider",
+      "providerOpenAi": "OpenAI Whisper-1 — reference accuracy",
+      "providerGroq": "Groq Whisper-Large-v3 — ~10× faster, free tier",
+      "groqKeyHint": "Uses your Groq API key (also used for Groq text processing if selected).",
+      "openaiKeyHint": "Uses your OpenAI API key."
+    },
+    "whisperKey": {
+      "groqSection": "Groq API Key (for Whisper transcription)",
+      "openaiSection": "OpenAI API Key (for Whisper transcription)",
+      "description": "Stored locally on your device with owner-only permissions — never sent to VoiceInk servers."
+    },
+    "localModels": {
+      "section": "Local Models",
+      "description": "Download a Whisper model to transcribe locally — no internet required. Multilingual Q5 models support Czech, Slovak and 90+ other languages.",
+      "loadingList": "Loading model list…",
+      "noModelsAvailable": "No models available.",
+      "englishOnlyBadge": "EN ONLY",
+      "cannotDeleteActive": "Cannot delete active model",
+      "deleteModel": "Delete model"
+    },
+    "textProcessing": {
+      "section": "Text Processing",
+      "description": "Choose which AI service handles Clean, Polish, Translate and Summarize modes.",
+      "serviceLabel": "Service",
+      "customUrlLabel": "Custom endpoint base URL",
+      "customUrlPlaceholder": "https://example.com/v1",
+      "customUrlDescription": "VoiceInk appends /chat/completions automatically.",
+      "serverUrlLabel": "Server URL",
+      "modelNameLabel": "Model name",
+      "ollamaHint": "Make sure Ollama is running: ollama serve",
+      "lmStudioHint": "Make sure LM Studio is running with the local server enabled."
+    },
+    "providers": {
+      "openai": "OpenAI",
+      "openaiSub": "GPT-4o, GPT-4, GPT-3.5",
+      "anthropic": "Anthropic Claude",
+      "anthropicSub": "Claude Haiku/Sonnet/Opus",
+      "gemini": "Google Gemini",
+      "geminiSub": "Gemini 2.5 Flash/Pro",
+      "openaiCompat": "OpenAI-compatible (cloud)",
+      "openaiCompatSub": "Grok, Groq, DeepSeek, Mistral, OpenRouter…",
+      "ollama": "Ollama (local)",
+      "lmStudio": "LM Studio (local)"
+    },
+    "compatPresets": {
+      "grok": "xAI Grok",
+      "groq": "Groq",
+      "groqTooltip": "Different from xAI Grok — Groq is a fast inference host.",
+      "deepseek": "DeepSeek",
+      "mistral": "Mistral",
+      "openrouter": "OpenRouter",
+      "openrouterTooltip": "Aggregator: one key, 100+ models.",
+      "perplexity": "Perplexity",
+      "together": "Together AI",
+      "custom": "Custom URL"
+    },
+    "apiKey": {
+      "placeholder": "Paste your API key",
+      "descriptionWithProvider": "Stored locally on your device with owner-only permissions. Used only by {{provider}}.",
+      "connected": "Connected",
+      "failed": "Failed — check key & network"
+    },
+    "modelPicker": {
+      "label": "Model",
+      "refresh": "Refresh from provider",
+      "refreshing": "Refreshing…",
+      "refreshTooltip": "Fetch the latest model list from the provider (24h cached)",
+      "modelPlaceholder": "Enter model identifier",
+      "providerNoModels": "Provider returned no models — check API key.",
+      "suggestionsLabel": "Suggestions: {{models}}",
+      "suggestionsMore": ", +{{count}} more",
+      "liveModelsCount": "{{count}} models fetched live (cached for 24h)."
+    }
+  },
+
+  "output": {
+    "modeSection": "Output Mode",
+    "modes": {
+      "raw": "Raw",
+      "rawDesc": "Exact transcription. No cleanup.",
+      "clean": "Clean",
+      "cleanDesc": "Punctuation, grammar, filler removal.",
+      "polished": "Polished",
+      "polishedDesc": "Rewritten into clear, professional prose.",
+      "custom": "Custom",
+      "customDesc": "Apply one of your saved profiles to every transcription."
+    },
+    "behavior": {
+      "section": "Behavior",
+      "autoPaste": "Auto-paste",
+      "autoPasteDescription": "Paste result into the active text field",
+      "showNotification": "Show notification",
+      "showNotificationDescription": "Preview transcription after processing"
+    },
+    "profiles": {
+      "section": "Custom Profiles",
+      "emptyHint": "You don't have any custom profiles yet. A profile is a saved system prompt — create one for each style of output you want (e.g. \"Email tone\", \"Tweet under 280\", \"Bullet points only\").",
+      "createFirst": "Create your first profile",
+      "renameTitle": "Rename profile",
+      "deleteTitle": "Delete \"{{name}}\"",
+      "newProfileTooltip": "Create a new profile",
+      "newProfile": "New profile",
+      "defaultName": "Profile {{n}}",
+      "editingHint": "Editing {{name}}. Hard rules (preserve language, no code fences, no commentary) are appended automatically — focus your prompt on style and goal.",
+      "promptPlaceholder": "e.g. Rewrite this as a tweet under 280 chars in my casual tone.",
+      "emptyPromptHint": "Empty prompt → output falls back to Raw.",
+      "charCount": "{{used}} / {{max}}",
+      "noActiveProfile": "Pick a profile to edit, or create a new one."
+    }
+  },
+
+  "translation": {
+    "speechRecognition": {
+      "section": "Speech Recognition",
+      "sourceLanguageLabel": "Source language",
+      "sourceLanguageDescription": "Language you speak in. Auto-detect works for most languages but setting it explicitly is more accurate."
+    },
+    "section": "Translation",
+    "enable": "Enable translation",
+    "enableDescription": "Output your speech in a different language than you spoke",
+    "targetLanguageLabel": "Target language",
+    "targetLanguageDescription": "Language the output will be written in."
+  },
+
+  "summary": {
+    "section": "Summary",
+    "enable": "Enable summary mode",
+    "enableDescription": "Generate a concise summary instead of the full transcript",
+    "typeSection": "Summary Type",
+    "types": {
+      "keyPoints": "Key Points",
+      "keyPointsDesc": "Bullet-point summary of main ideas",
+      "actionItems": "Action Items",
+      "actionItemsDesc": "Extracted tasks and next steps",
+      "tldr": "TL;DR",
+      "tldrDesc": "One-paragraph condensed version"
+    }
+  },
+
+  "dictionary": {
+    "heading": "Custom Words",
+    "description": "Add technical terms, names, and brand words to improve transcription accuracy.",
+    "inputPlaceholder": "e.g. Kubernetes, VoiceInk",
+    "emptyTitle": "Your dictionary is empty.",
+    "emptyHint": "Add custom words to improve transcription accuracy."
+  },
+
+  "history": {
+    "heading": "Recent Activity",
+    "retention": {
+      "7days": "7 days",
+      "30days": "30 days",
+      "90days": "90 days",
+      "1year": "1 year",
+      "forever": "Forever"
+    },
+    "clear": "Clear",
+    "confirmClear": "Confirm Clear?",
+    "confirmHint": "Click again within 3s · Esc to cancel",
+    "loading": "Loading...",
+    "emptyTitle": "No transcriptions yet.",
+    "emptyHint": "Press your shortcut to start recording.",
+    "justNow": "just now",
+    "minutesAgo": "{{n}}m ago",
+    "hoursAgo": "{{n}}h ago"
+  },
+
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to VoiceInk",
+      "description": "Speak naturally, get perfect text. Press your shortcut, say what you want to write, and VoiceInk handles the rest.",
+      "cta": "Get Started"
+    },
+    "permissions": {
+      "title": "Microphone access",
+      "descriptionPrefix": "VoiceInk needs microphone access to capture your speech.",
+      "privacyLocal": "Your audio is transcribed entirely on your device — never sent to any server.",
+      "privacyCloud": "Your audio is sent to your API provider for transcription — never stored by VoiceInk.",
+      "grant": "Grant Microphone Access",
+      "granted": "Granted",
+      "alsoEnableAccessibility": "Also enable accessibility (for auto-paste)",
+      "continue": "Continue"
+    },
+    "shortcut": {
+      "title": "Your recording shortcut",
+      "description": "The default shortcut is Option+Space on macOS and Ctrl+Shift+Space on Windows. You can change it anytime in Settings.",
+      "looksGood": "Looks good",
+      "changeLater": "Change later in Settings"
+    },
+    "apiKey": {
+      "title": "Add your OpenAI API key",
+      "description": "VoiceInk uses your own key — no subscription, no data stored. Get your key at platform.openai.com.",
+      "placeholder": "sk-...",
+      "saved": "API key saved",
+      "invalid": "Invalid key. Check and try again.",
+      "continue": "Continue",
+      "skip": "Skip for now"
+    },
+    "done": {
+      "title": "You're all set",
+      "description": "Press your shortcut in any app to start recording. VoiceInk runs quietly in the menu bar.",
+      "cta": "Start Using VoiceInk"
+    }
+  },
+
+  "overlay": {
+    "processing": "Processing...",
+    "done": "Done",
+    "failed": "Failed"
+  },
+
+  "help": {
+    "quickStart": {
+      "heading": "Quick Start",
+      "intro": "VoiceInk lives in your menu bar. Press your shortcut, speak, release — your words appear wherever your cursor is.",
+      "steps": [
+        "Pick a Transcription engine in the Engine tab (Cloud or Local).",
+        "If Cloud: choose your Whisper host (OpenAI or Groq) and paste that provider's API key.",
+        "If Local: download a Whisper model.",
+        "Pick a Text Processing provider (OpenAI, Anthropic, Gemini, an OpenAI-compatible host, Ollama, or LM Studio) and paste its key.",
+        "Choose an Output mode in the Output tab. Clean is the default — punctuation, grammar, basic filler removal.",
+        "Place your cursor in any app, hold the shortcut, speak, release."
+      ],
+      "permissionsNote": "On first launch macOS will ask for Microphone and Accessibility permissions. Both are required: Microphone to capture audio, Accessibility to paste the result into other apps."
+    },
+    "generalTab": {
+      "heading": "General Tab",
+      "fields": {
+        "primaryShortcut": {
+          "name": "Primary Shortcut",
+          "body": "The keyboard combination that starts a recording, plus the language you'll speak. Click the shortcut field and press your desired keys (e.g. Option+Space). The Language picker tells the transcriber what to listen for — pick one explicitly for short clips, since auto-detection is unreliable on a few seconds of audio."
+        },
+        "secondaryShortcut": {
+          "name": "Secondary Shortcut",
+          "body": "A second shortcut bound to a different language. Useful if you switch between two languages — e.g. Option+Space for Czech and Alt+Shift+Space for English. Both shortcuts go through the same pipeline; only the language differs."
+        },
+        "microphone": {
+          "name": "Microphone",
+          "body": "Pick a specific input device or leave on System default. If the device you saved gets unplugged, VoiceInk will quietly fall back to the system default and warn you here."
+        },
+        "holdMode": {
+          "name": "Recording mode — Hold to Record",
+          "body": "Hold the shortcut while you speak, release to stop. Best for short messages. Has a built-in 600 ms minimum so quick taps don't get cut off."
+        },
+        "toggleMode": {
+          "name": "Recording mode — Toggle",
+          "body": "Press once to start, press again to stop. Best for longer dictation where you don't want to hold a key down."
+        },
+        "startOnLogin": {
+          "name": "Start on login",
+          "body": "Launch VoiceInk automatically when you log in to your Mac."
+        },
+        "checkForUpdates": {
+          "name": "Check for updates",
+          "body": "Looks for a newer release. If updates are not yet active for your build, you'll see a \"Check failed\" message — that's expected, not a bug."
+        },
+        "verboseDiagnostics": {
+          "name": "Verbose diagnostics",
+          "body": "When ON, the local crash.log file includes short transcript previews, which makes bug reports much easier to triage. OFF by default for privacy. Only turn it on while debugging an issue."
+        },
+        "showCrashLog": {
+          "name": "Show crash.log",
+          "body": "Opens the diagnostics file in your default text editor. Helpful when something goes wrong — the file shows what the app did, step by step."
+        }
+      }
+    },
+    "engineTab": {
+      "heading": "Engine Tab — Pick Transcription + Text Processing Independently",
+      "intro": "VoiceInk has two independent stages: Transcription (speech → raw text) and Text Processing (cleanup, polish, translation, summary). You pick a backend for each. The example modes below are common combinations — but every transcription engine works with every text processor, so mix and match freely.",
+      "modes": {
+        "fullyOnline": {
+          "tag": "Fully Online",
+          "title": "Cloud Whisper + Cloud LLM",
+          "summary": "Easiest setup, best accuracy, requires internet.",
+          "bullets": [
+            "Audio is sent to OpenAI Whisper or Groq Whisper for transcription.",
+            "Transcripts are sent to OpenAI / Anthropic / Gemini / etc. for cleanup.",
+            "No model download, no local CPU/GPU work.",
+            "Pay-per-use — typically pennies per minute."
+          ],
+          "when": "Pick this if you want best accuracy with least friction and don't mind audio leaving your device."
+        },
+        "semiOffline": {
+          "tag": "Semi-Offline",
+          "title": "Local Whisper + Cloud LLM",
+          "summary": "Audio never leaves your Mac; only the transcript is sent to the cloud.",
+          "bullets": [
+            "Speech recognition runs entirely on your Mac.",
+            "Cleanup / polish / translate / summarize use a cloud LLM (your choice).",
+            "Audio is never uploaded — only the resulting text.",
+            "Needs a downloaded local Whisper model + an LLM API key."
+          ],
+          "when": "Pick this when audio is sensitive (meetings, voice notes) but you still want a strong LLM to clean it up."
+        },
+        "fullyOffline": {
+          "tag": "Fully Offline",
+          "title": "Local Whisper + Ollama or LM Studio",
+          "summary": "Nothing leaves your Mac. Works on a plane.",
+          "bullets": [
+            "Both transcription and cleanup run on your machine.",
+            "Requires Ollama or LM Studio running locally with a chat model.",
+            "Quality of cleanup depends on the local LLM you pick.",
+            "Slower than cloud; needs a capable Mac for big models."
+          ],
+          "when": "Pick this for maximum privacy or when offline. Set Output mode to Raw to skip the LLM step entirely."
+        }
+      },
+      "fields": {
+        "cloudProvider": {
+          "name": "Transcription — Cloud Whisper provider (OpenAI or Groq)",
+          "body": "Both providers run Whisper on the same multipart-form API shape, so we let you pick. OpenAI Whisper-1 is the reference accuracy benchmark. Groq Whisper-Large-v3 is roughly 10× faster (often under a second for short clips) and has a generous free tier — same model family, comparable accuracy. Each uses its own API key slot."
+        },
+        "localWhisper": {
+          "name": "Transcription — Local (Whisper)",
+          "body": "Runs Whisper on your Mac via whisper.cpp. Fully offline once a model is downloaded. Multilingual Q5 models (small/medium/large/turbo) handle Czech, Slovak, English and 90+ other languages. The English-only models (tiny-en, base-en) are smaller and faster but don't work for other languages."
+        },
+        "localModels": {
+          "name": "Local Models",
+          "body": "Click Download to fetch a model. Files are verified by SHA-256 to prevent tampering. Larger models = better accuracy but slower transcription and more disk space. small-q5 is a great default; medium-q5 if your Mac can handle it. The hash check runs once per model per app start (cached afterwards), not on every recording."
+        },
+        "openai": {
+          "name": "OpenAI",
+          "body": "GPT-4o, GPT-4o mini, GPT-4 Turbo, GPT-3.5 Turbo, o1-mini. gpt-4o-mini is a great default — fast and very cheap. Get a key at platform.openai.com."
+        },
+        "anthropic": {
+          "name": "Anthropic Claude",
+          "body": "Claude Haiku 4.5, Sonnet 4.5, Opus 4.5. Excellent at following instructions and preserving the speaker's voice. Get a key at console.anthropic.com."
+        },
+        "gemini": {
+          "name": "Google Gemini",
+          "body": "Gemini 2.5 Flash, Pro, Flash-Lite. Generous free tier (15 requests/minute). Get a key at aistudio.google.com. We set permissive safety thresholds — this is a dictation tool, the user is dictating their own words."
+        },
+        "openaiCompat": {
+          "name": "OpenAI-compatible (cloud)",
+          "body": "A single dropdown that covers seven providers that all speak the OpenAI API shape: xAI Grok, Groq (a fast inference host — different from xAI Grok), DeepSeek, Mistral, OpenRouter (a meta-aggregator with 100+ models, one key), Perplexity, Together AI, plus a Custom option for any other URL. Each gets its own key slot — switching between providers does not delete your saved keys."
+        },
+        "ollama": {
+          "name": "Ollama (local)",
+          "body": "Sends transcripts to a local Ollama server (default http://localhost:11434). Run `ollama serve` and pull a model like `llama3.2`. Fully offline. No key needed."
+        },
+        "lmStudio": {
+          "name": "LM Studio (local)",
+          "body": "Sends transcripts to LM Studio's local server (default http://localhost:1234). Open LM Studio, load a model, and start its local server. Fully offline. No key needed."
+        },
+        "apiKeys": {
+          "name": "API keys",
+          "body": "All keys are stored locally on your Mac in ~/Library/Application Support/VoiceInk/keys.json with owner-only file permissions (chmod 0600). Each provider has its own slot. Keys are never sent anywhere except the corresponding provider. Use Test connection next to each key field to validate it before saving."
+        },
+        "modelDropdown": {
+          "name": "Model dropdown + Refresh from provider",
+          "body": "The Model dropdown shows a hand-curated default list per provider. Click Refresh from provider to fetch the live model list from the provider's /models endpoint. The result is cached locally for 24 hours, so you don't hammer the provider on every settings open. New models from the provider show up without a VoiceInk update."
+        },
+        "openrouterTogetherCustom": {
+          "name": "OpenRouter / Together / Custom",
+          "body": "These three have catalogues too large to enumerate (hundreds of models), so the Model field is a free-form text input. Recommended models are listed below it; or use Refresh from provider to pull the full list."
+        }
+      }
+    },
+    "outputTab": {
+      "heading": "Output Tab",
+      "fields": {
+        "raw": {
+          "name": "Output mode — Raw",
+          "body": "Pastes the transcript exactly as Whisper produced it. Fastest — no second LLM call. Pick this if you want the unmodified output."
+        },
+        "clean": {
+          "name": "Output mode — Clean (default)",
+          "body": "Fixes grammar and punctuation, and removes obvious filler words (\"um\", \"uh\", \"like\" as a discourse marker, \"you know\"). Doesn't rephrase or restructure your sentences. Good default for messages and notes."
+        },
+        "polished": {
+          "name": "Output mode — Polished",
+          "body": "Rewrites your speech into professional prose. Removes filler words and restructures sentences. Best for emails and documents — but it will change your wording."
+        },
+        "custom": {
+          "name": "Output mode — Custom (profiles)",
+          "body": "Save as many named prompt profiles as you want — for example Email tone, Tweet under 280, Bullet points only, Strip emojis. Click a profile chip to make it active, the pencil icon to rename, the trash icon to delete. Switching profile while Custom mode is selected takes effect on the very next recording. The tray menu (Output Mode → Custom) lists every profile too, so you can switch without opening Settings. Hard rules (preserve language, no code fences, no commentary) are appended automatically. Empty prompt falls back to Raw."
+        },
+        "autoPaste": {
+          "name": "Auto-paste",
+          "body": "When ON, VoiceInk simulates Cmd+V into whichever app has focus right after transcription. When OFF, the text is still copied to your clipboard — paste manually. Auto-paste needs Accessibility permission."
+        },
+        "showNotification": {
+          "name": "Show notification",
+          "body": "Shows a small system notification with a preview when transcription completes. Errors are always shown regardless of this setting."
+        }
+      }
+    },
+    "translationTab": {
+      "heading": "Translation Tab",
+      "fields": {
+        "sourceLanguage": {
+          "name": "Source language",
+          "body": "The language you'll be speaking. Auto-detect works on long clips but is unreliable on a few seconds — for short dictation, set this explicitly. Note: the per-shortcut Language pickers in the General tab override this when you use those shortcuts."
+        },
+        "enableTranslation": {
+          "name": "Enable translation",
+          "body": "When ON, the transcript is translated into the target language before being pasted. Uses whichever Text Processing provider you have selected (OpenAI, Anthropic, Gemini, OpenAI-compatible, Ollama, or LM Studio)."
+        },
+        "targetLanguage": {
+          "name": "Target language",
+          "body": "The language to translate into. Common pair: speak Czech, paste English."
+        }
+      }
+    },
+    "summaryTab": {
+      "heading": "Summary Tab",
+      "intro": "Summarize mode condenses long recordings into structured output. Useful for meeting notes and voice memos.",
+      "fields": {
+        "enableSummary": {
+          "name": "Enable summary",
+          "body": "Adds a summary step to the pipeline. The summary uses your selected Text Processing provider and is written in the same language as your transcript (or the target language if Translation is also ON)."
+        },
+        "keyPoints": {
+          "name": "Summary type — Key Points",
+          "body": "Bulleted list of the main ideas."
+        },
+        "actionItems": {
+          "name": "Summary type — Action Items",
+          "body": "Pulls out tasks and to-dos from the transcript."
+        },
+        "tldr": {
+          "name": "Summary type — TL;DR",
+          "body": "One short paragraph capturing the gist."
+        },
+        "summaryShortcut": {
+          "name": "Summary shortcut",
+          "body": "Optional dedicated shortcut that records and always runs the summary step, regardless of the global Output mode."
+        }
+      }
+    },
+    "dictionaryTab": {
+      "heading": "Dictionary Tab",
+      "intro": "The dictionary lists words and phrases that Whisper should bias toward. Helpful for names, jargon, product names, and acronyms that Whisper would otherwise mishear or spell phonetically.",
+      "fields": {
+        "addingEntries": {
+          "name": "Adding entries",
+          "body": "Type a word or short phrase and press Enter. Add the exact spelling you want — capitalization matters for proper nouns."
+        },
+        "whatItDoes": {
+          "name": "What it does",
+          "body": "Entries are passed to Whisper as a prompt hint. Whisper still has the final say — the dictionary is a nudge, not a rule. It works best for unique words (proper nouns) rather than common ones."
+        }
+      }
+    },
+    "historyTab": {
+      "heading": "History Tab",
+      "fields": {
+        "historyList": {
+          "name": "History list",
+          "body": "Every transcription is saved locally to a SQLite database with the raw text, processed text, language, duration and timestamp. Click any entry to copy it back to your clipboard."
+        },
+        "retention": {
+          "name": "Retention",
+          "body": "History older than the chosen retention period is deleted automatically on app start. Set to a small number for tighter privacy."
+        },
+        "clearAll": {
+          "name": "Clear all",
+          "body": "Two-click confirmation. Click once → \"Confirm Clear?\" appears for 3 seconds. Click again to wipe history. Press Esc or wait 3 s to cancel."
+        }
+      }
+    },
+    "troubleshooting": {
+      "heading": "Troubleshooting",
+      "fields": {
+        "noText": {
+          "name": "Recording produces no text",
+          "body": "Most often the microphone is muted, dead, or VoiceInk doesn't have Microphone permission. Open System Settings → Privacy & Security → Microphone and confirm VoiceInk is enabled. Open Show crash.log in General — a line like `peak=0.0003` means the mic captured silence."
+        },
+        "noPaste": {
+          "name": "Text doesn't paste",
+          "body": "Auto-paste requires Accessibility permission. Open System Settings → Privacy & Security → Accessibility, find VoiceInk, and toggle it on. The clipboard always gets the text even if pasting fails — Cmd+V manually."
+        },
+        "wrongLanguage": {
+          "name": "Wrong language detected",
+          "body": "For short clips, set Source language explicitly in the Translation tab, or use a per-shortcut language in the General tab."
+        },
+        "englishOnly": {
+          "name": "Cleanup says \"I can only assist with English text\"",
+          "body": "Means the LLM was told the wrong language. Set Source language explicitly; this is the same fix as above."
+        },
+        "frozen": {
+          "name": "App seems frozen mid-recording",
+          "body": "The pipeline has a 360 s overall timeout (with 60 s per LLM call). If it's been stuck longer, quit from the tray menu and check crash.log for the last logged step."
+        },
+        "llmFailed": {
+          "name": "LLM connection failed / 429 errors",
+          "body": "VoiceInk retries once on a 2-second backoff for transient errors (429 rate limit, 5xx). If you keep hitting them, you're either rate-limited (wait a minute) or the provider's down (try a different one). Auth errors (401/403) don't retry — re-paste your key."
+        },
+        "newModel": {
+          "name": "My provider released a new model — where is it?",
+          "body": "Open Engine → Text Processing → Model dropdown → click Refresh from provider. VoiceInk fetches the live list from the provider's /models endpoint and caches it for 24h."
+        }
+      }
+    },
+    "privacy": {
+      "heading": "Privacy Notes",
+      "bullets": [
+        "All settings, history, models and API keys are stored locally on your Mac.",
+        "API keys live in keys.json with chmod 0600 (owner-only). One slot per provider — switching providers does not leak any other key.",
+        "In Cloud transcription mode, audio is sent to your chosen Whisper host (OpenAI or Groq). In Local mode, audio never leaves your machine.",
+        "Text processing sends only transcripts — never audio — and only to the single provider you selected (OpenAI, Anthropic, Gemini, an OpenAI-compatible host, Ollama, or LM Studio).",
+        "crash.log does not include transcripts unless Verbose diagnostics is ON.",
+        "The 24-hour live model cache is stored locally (model_cache.json). It contains only model identifiers, no transcripts.",
+        "VoiceInk has no analytics, telemetry, or accounts."
+      ]
+    }
+  },
+
+  "errors": {
+    "noAudio": "No audio recorded. Hold the shortcut while speaking.",
+    "noSpeechDeadMic": "Microphone captured silence (rms ≈ 0). Grant Microphone permission in System Settings → Privacy & Security → Microphone → VoiceInk, or check your input device.",
+    "noSpeechQuietMic": "No clear speech captured. Your mic may be too quiet or muted — try speaking closer to it, or check Source Language in Settings.",
+    "noApiKeyOpenAi": "No API key configured. Add your OpenAI key in Settings → Engine.",
+    "noApiKeyVendor": "No API key configured. Add your {{vendor}} key in Settings → Engine.",
+    "localTranscriptionCrashed": "Local transcription crashed. Try a different model or use Cloud engine.",
+    "transcriptionTaskFailed": "Transcription task failed: {{error}}",
+    "transcriptionTimedOut": "Transcription timed out. Try a shorter recording or a smaller model.",
+    "localWhisperNotCompiled": "Local Whisper is not compiled in. Rebuild with --features local-whisper.",
+    "modelNotDownloaded": "Model '{{model}}' not downloaded. Go to Settings → Engine to download it.",
+    "modelVerifyFailedSuffix": "Delete the model in Settings → Engine and re-download.",
+    "modelDownloadVerifyFailed": "{{detail}}\n\nThe downloaded file was deleted. Please try downloading again.",
+    "unknownModel": "Unknown model: {{model}}",
+    "hashVerifyTaskFailed": "Hash verification task failed: {{error}}",
+    "whisperApiError": "{{vendor}} API error {{status}}: {{body}}",
+    "whisperReachFailed": "Failed to reach {{vendor}} Whisper API",
+    "whisperParseFailed": "Failed to parse Whisper response",
+    "modelDownloadStartFailed": "Failed to start model download",
+    "clipboardWriteFailed": "Clipboard write failed: {{error}}. Text could not be pasted.",
+    "pastePanicked": "Paste step panicked — text may not be on clipboard.",
+    "pasteTaskFailed": "Paste task failed: {{error}}",
+    "updateCheckFailed": "Update check failed: {{error}}"
+  },
+
+  "notifications": {
+    "successTitle": "VoiceInk",
+    "errorTitle": "VoiceInk — recording failed"
+  },
+
+  "tray": {
+    "title": "VoiceInk",
+    "tooltip": "VoiceInk",
+    "outputMode": "Output Mode",
+    "modeRaw": "Raw",
+    "modeClean": "Clean",
+    "modePolished": "Polished",
+    "modeCustom": "Custom",
+    "manageProfiles": "Manage profiles…",
+    "recentActivity": "Recent Activity",
+    "settings": "Settings…",
+    "quit": "Quit VoiceInk"
+  }
+}

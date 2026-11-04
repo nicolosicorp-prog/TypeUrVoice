@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>VoiceInk needs microphone access to transcribe your speech. Audio is processed by your API provider and never stored by VoiceInk.</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>VoiceInk needs automation access to paste transcribed text into other applications.</string>
+</dict>
+</plist>

@@ -1,0 +1,7 @@
+# whisper-rs-sys forwards every GGML_* env var to whisper.cpp's cmake build.
+# Without these, ggml compiles with -mcpu=native: a DMG built on an M3/M4
+# can then use instructions M1 Macs lack and crash there with SIGILL.
+# armv8.5-a+fp16 is the M1 baseline (same flags as scripts/build-llama-server.sh).
+[env]
+GGML_NATIVE = "OFF"
+GGML_CPU_ARM_ARCH = "armv8.5-a+fp16"
