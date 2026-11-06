@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the bundled `llama-server` sidecar used by VoiceInk's Built-in
+# Build the bundled `llama-server` sidecar used by TypeUrVoice's Built-in
 # (on-device) text processor.
 #
 # - Pinned llama.cpp release, built from source — no downloaded executables.
@@ -38,7 +38,12 @@ if [[ "$(uname)" == "Darwin" ]]; then
 fi
 
 # Keep the builder's home/checkout paths out of the binary (__FILE__ strings).
-PREFIX_MAP="-ffile-prefix-map=$WORK=llama.cpp -ffile-prefix-map=$ROOT=. -ffile-prefix-map=$HOME=~"
+# CMake splits these flags on whitespace, so paths containing spaces are skipped.
+PREFIX_MAP=""
+for p in "$WORK=llama.cpp" "$ROOT=." "$HOME=~"; do
+  case "$p" in *[[:space:]]*) echo "note: not prefix-mapping path with spaces: ${p%=*}" ;;
+                *) PREFIX_MAP+=" -ffile-prefix-map=$p" ;; esac
+done
 
 cmake -S "$WORK" -B "$WORK/build" \
   -DCMAKE_BUILD_TYPE=Release \

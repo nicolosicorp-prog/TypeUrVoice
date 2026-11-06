@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# build-dmg.sh — builds VoiceInk and packages a styled DMG.
+# build-dmg.sh — builds TypeUrVoice and packages a styled DMG.
 #
 # Tauri 2's CLI invokes bundle_dmg.sh with missing arguments (upstream bug),
 # so its DMG step always fails with "Not enough arguments". This script runs
@@ -14,7 +14,7 @@ set -eu
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-APP_NAME="VoiceInk"
+APP_NAME="TypeUrVoice"
 # Read version from Cargo.toml so we never drift.
 VERSION="$(grep '^version' src-tauri/Cargo.toml | head -1 | sed -E 's/version *= *"([^"]+)".*/\1/')"
 ARCH="$(uname -m)"  # arm64 on Apple Silicon, x86_64 on Intel
@@ -26,14 +26,29 @@ BUNDLE_DIR="src-tauri/target/release/bundle"
 MACOS_DIR="${BUNDLE_DIR}/macos"
 DMG_DIR="${BUNDLE_DIR}/dmg"
 
-echo "=== VoiceInk DMG builder ==="
+echo "=== TypeUrVoice DMG builder ==="
 echo "Version: ${VERSION}  Arch: ${ARCH}"
 
 # Keep the builder's home directory and checkout path out of the shipped
 # binaries (panic locations, __FILE__ strings). Applies to Rust and to the
 # C/C++ code built by -sys crates (whisper.cpp).
-PREFIX_MAP="-ffile-prefix-map=${ROOT}=. -ffile-prefix-map=${HOME}=~"
-export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=${ROOT}=. --remap-path-prefix=${HOME}=~"
+#
+# Rust: CARGO_ENCODED_RUSTFLAGS (0x1f-separated) so a checkout path with
+# spaces stays one argument. It overrides RUSTFLAGS, so fold any existing
+# RUSTFLAGS words in first.
+SEP=$'\x1f'
+ENCODED=""
+for f in ${RUSTFLAGS:-}; do ENCODED+="${f}${SEP}"; done
+ENCODED+="--remap-path-prefix=${ROOT}=.${SEP}--remap-path-prefix=${HOME}=~"
+unset RUSTFLAGS
+export CARGO_ENCODED_RUSTFLAGS="${ENCODED}"
+# C/C++: CMake splits CFLAGS on whitespace, so a path with spaces can't be
+# mapped safely — skip it (the home-dir map still applies).
+PREFIX_MAP=""
+for p in "${ROOT}=." "${HOME}=~"; do
+  case "$p" in *[[:space:]]*) echo "note: not prefix-mapping C sources for path with spaces: ${p%=*}" ;;
+                *) PREFIX_MAP+=" -ffile-prefix-map=${p}" ;; esac
+done
 export CFLAGS="${CFLAGS:-} ${PREFIX_MAP}"
 export CXXFLAGS="${CXXFLAGS:-} ${PREFIX_MAP}"
 export OBJCFLAGS="${OBJCFLAGS:-} ${PREFIX_MAP}"
@@ -69,7 +84,7 @@ if [ "${orphan_count}" -gt 0 ]; then
   rm -f "${MACOS_DIR}"/rw.*.dmg
 fi
 
-# Also detach any leftover /Volumes/VoiceInk mount from an aborted prior attempt.
+# Also detach any leftover /Volumes/TypeUrVoice mount from an aborted prior attempt.
 if mount | grep -q "/Volumes/${APP_NAME}"; then
   echo "Detaching stale /Volumes/${APP_NAME} mount..."
   hdiutil detach "/Volumes/${APP_NAME}" -force >/dev/null 2>&1 || true

@@ -1,10 +1,10 @@
-# TypeUrVoice (VoiceInk)
+# TypeUrVoice
 
 A fast, private voice-to-text app for macOS (and Windows). Press a hotkey, speak, release — your words are transcribed and pasted into whatever app you're using. It lives in the menu bar, never steals focus, and can run **fully offline**.
 
 Free and open source under the [MIT License](LICENSE).
 
-> The app itself is still called **VoiceInk** inside the code and the built `.app`. It is not related to other projects with a similar name.
+> Formerly named VoiceInk. Settings, API keys, models and history from VoiceInk are moved over automatically the first time TypeUrVoice starts.
 
 ## Features
 

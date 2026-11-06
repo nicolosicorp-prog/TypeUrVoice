@@ -18,7 +18,7 @@ const BACKUP_COUNT: usize = 1; // crash.log + crash.log.1
 static ROTATE_LOCK: Mutex<()> = Mutex::new(());
 
 fn log_path() -> Option<PathBuf> {
-    dirs::data_dir().map(|d| d.join("VoiceInk").join("crash.log"))
+    crate::storage::settings::typeurvoice_data_dir().ok().map(|d| d.join("crash.log"))
 }
 
 fn rotate_if_needed(path: &std::path::Path) {

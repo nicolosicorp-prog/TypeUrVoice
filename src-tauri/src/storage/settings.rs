@@ -2,17 +2,48 @@ use anyhow::Result;
 use std::path::PathBuf;
 use crate::state::Settings;
 
-pub fn voiceink_data_dir() -> Result<PathBuf> {
-    let dir = dirs::data_dir()
+/// Folder name the app used before it was renamed to TypeUrVoice.
+const LEGACY_DIR_NAME: &str = "VoiceInk";
+const DIR_NAME: &str = "TypeUrVoice";
+
+fn data_root() -> PathBuf {
+    dirs::data_dir()
         .or_else(|| dirs::home_dir().map(|h| h.join(".local/share")))
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("VoiceInk");
+}
+
+pub fn typeurvoice_data_dir() -> Result<PathBuf> {
+    let dir = data_root().join(DIR_NAME);
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
 
+/// One-time move of `…/VoiceInk` → `…/TypeUrVoice` (settings, keys, models,
+/// history, logs). Must run before anything touches the data dir — the first
+/// `typeurvoice_data_dir()` call creates the new folder, after which this is a
+/// no-op. Returns a message to log once logging is available.
+pub fn migrate_legacy_data_dir() -> Option<String> {
+    migrate_dir(&data_root().join(LEGACY_DIR_NAME), &data_root().join(DIR_NAME))
+}
+
+fn migrate_dir(old: &std::path::Path, new: &std::path::Path) -> Option<String> {
+    if !old.is_dir() {
+        return None;
+    }
+    if new.exists() {
+        return Some(format!(
+            "Data dir: both {} and {} exist — keeping the new one, old folder left untouched",
+            old.display(), new.display()
+        ));
+    }
+    Some(match std::fs::rename(old, new) {
+        Ok(()) => format!("Data dir: moved {} → {}", old.display(), new.display()),
+        Err(e) => format!("Data dir: could not move {} → {}: {}", old.display(), new.display(), e),
+    })
+}
+
 fn settings_path() -> Result<PathBuf> {
-    Ok(voiceink_data_dir()?.join("settings.json"))
+    Ok(typeurvoice_data_dir()?.join("settings.json"))
 }
 
 use super::restrict_permissions;
@@ -41,7 +72,7 @@ pub fn save(settings: &Settings) -> Result<()> {
 // API keys live in `storage::api_keys::keys.json` (multi-provider). The legacy
 // `.api_key` file is migrated on first run by `api_keys::migrate_legacy_if_needed`.
 
-/// Model ids that were retired upstream, or were VoiceInk's own defaults
+/// Model ids that were retired upstream, or were TypeUrVoice's own defaults
 /// before the Oct 2026 refresh, mapped to their current replacement.
 /// `processing_model` is only ever a hosted-provider id, so a flat map is
 /// unambiguous.
@@ -90,6 +121,23 @@ pub fn migrate_retired_models(settings: &mut Settings) -> Option<(String, String
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn migrates_legacy_data_dir_once() {
+        let root = std::env::temp_dir().join(format!("tuv-migrate-{}", std::process::id()));
+        let (old, new) = (root.join("VoiceInk"), root.join("TypeUrVoice"));
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(old.join("settings.json"), "{}").unwrap();
+
+        assert!(migrate_dir(&old, &new).unwrap().contains("moved"));
+        assert!(new.join("settings.json").exists() && !old.exists());
+        assert_eq!(migrate_dir(&old, &new), None); // nothing left to move
+
+        std::fs::create_dir_all(&old).unwrap();     // both exist → leave both
+        assert!(migrate_dir(&old, &new).unwrap().contains("both"));
+        assert!(old.exists() && new.join("settings.json").exists());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 
     #[test]
     fn migrates_retired_and_old_default_ids() {

@@ -1,4 +1,4 @@
-# VoiceInk — Implementation Plan
+# TypeUrVoice — Implementation Plan
 
 **Based on:** PRD.md v1.0  
 **Tech Stack:** Tauri 2.x (Rust + TypeScript/React)  
@@ -80,7 +80,7 @@ Toggle:            36×20px, 2px border, 16px knob
 
 ### System Tray Menu
 ```
-VoiceInk                        [header]
+TypeUrVoice                        [header]
 ─────────────
 Recording Mode
   ○ Hold to Record
@@ -97,18 +97,18 @@ Summary            ▸ Off
 Recent Activity
 Settings...
 ─────────────
-Quit VoiceInk
+Quit TypeUrVoice
 ```
 
 ### Permission Dialogs (macOS)
 
 **Microphone:**
-> **VoiceInk needs microphone access**
+> **TypeUrVoice needs microphone access**
 > This is required to capture your speech for transcription. Audio is processed locally or sent to your configured API — never stored.
 > [Open System Settings]  [Not Now]
 
 **Accessibility (Input Monitoring):**
-> **VoiceInk needs Accessibility access**
+> **TypeUrVoice needs Accessibility access**
 > This allows the global keyboard shortcut to work in any app and enables auto-paste into your active text field.
 > [Open System Settings]  [Not Now]
 
@@ -157,7 +157,7 @@ State: Error         →  ✕  "Failed — tap to retry"
 **General Tab:**
 - Shortcut Key: "Activate recording" → [Key picker]
 - Recording Mode: "Hold to Record" / "Toggle (Push-to-Start)"
-- Start on Login: "Launch VoiceInk when you log in"
+- Start on Login: "Launch TypeUrVoice when you log in"
 - Theme: Always dark (no toggle needed)
 
 **Engine Tab:**
@@ -197,7 +197,7 @@ State: Error         →  ✕  "Failed — tap to retry"
 ## Project Structure
 
 ```
-voiceink/
+typeurvoice/
 ├── src-tauri/                    # Rust backend
 │   ├── Cargo.toml
 │   ├── tauri.conf.json
@@ -297,7 +297,7 @@ voiceink/
 **Step 1.1: Initialize Tauri 2.x project**
 - `cargo install create-tauri-app` / `npm create tauri-app@latest`
 - Configure for React + TypeScript + Vite
-- Set app name, identifier (`com.voiceink.app`), icons
+- Set app name, identifier (`com.typeurvoice.app`), icons
 - Configure `tauri.conf.json`:
   - Window: hidden by default (tray-only app)
   - System tray: enabled
@@ -326,12 +326,12 @@ voiceink/
 - On first launch, guide user through permission grants sequentially
 
 **Step 1.4: First-run onboarding flow** (`Onboarding.tsx`)
-- Step 1: "Welcome to VoiceInk" — app description, [Get Started]
+- Step 1: "Welcome to TypeUrVoice" — app description, [Get Started]
 - Step 2: "Microphone access" — explain why, [Grant Access] triggers OS prompt
 - Step 3: "Accessibility access" (macOS only) — explain why, [Open System Settings]
 - Step 4: "Set your shortcut" — key picker, default Fn (macOS) / Ctrl+Win (Windows)
 - Step 5: "Add your API key" — input field, [Test] button, or [Use Local Mode]
-- Step 6: "You're ready" — quick summary, [Start Using VoiceInk]
+- Step 6: "You're ready" — quick summary, [Start Using TypeUrVoice]
 - Save `onboarding_complete: true` to settings
 - Show onboarding window only on first launch
 

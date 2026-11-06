@@ -96,7 +96,7 @@ pub fn filter_hallucinations(text: &str) -> String {
     // 1. Full-output exact match → drop entirely
     for pattern in HALLUCINATION_EXACT {
         if lower == *pattern {
-            eprintln!("[VoiceInk] Hallucination filtered (exact): {:?}", text);
+            eprintln!("[TypeUrVoice] Hallucination filtered (exact): {:?}", text);
             return String::new();
         }
     }
@@ -104,14 +104,14 @@ pub fn filter_hallucinations(text: &str) -> String {
     // 2. Subtitle-credit substrings → drop entirely when they dominate the output
     for pattern in HALLUCINATION_SUBSTR {
         if lower.contains(pattern) {
-            eprintln!("[VoiceInk] Hallucination filtered (substring {:?}): {:?}", pattern, text);
+            eprintln!("[TypeUrVoice] Hallucination filtered (substring {:?}): {:?}", pattern, text);
             return String::new();
         }
     }
 
     // 3. Bare URL output → drop entirely
     if looks_like_url_only(trimmed) {
-        eprintln!("[VoiceInk] Hallucination filtered (url-only): {:?}", text);
+        eprintln!("[TypeUrVoice] Hallucination filtered (url-only): {:?}", text);
         return String::new();
     }
 
@@ -196,15 +196,15 @@ pub async fn transcribe(
             match result {
                 Ok(Ok(Ok(inner))) => inner,
                 Ok(Ok(Err(_panic))) => {
-                    eprintln!("[VoiceInk] Whisper transcription panicked!");
+                    eprintln!("[TypeUrVoice] Whisper transcription panicked!");
                     Err(anyhow::anyhow!("Local transcription crashed. Try a different model or use Cloud engine."))
                 }
                 Ok(Err(e)) => {
-                    eprintln!("[VoiceInk] Whisper task join error: {}", e);
+                    eprintln!("[TypeUrVoice] Whisper task join error: {}", e);
                     Err(anyhow::anyhow!("Transcription task failed: {}", e))
                 }
                 Err(_) => {
-                    eprintln!("[VoiceInk] Whisper transcription timed out after 120s!");
+                    eprintln!("[TypeUrVoice] Whisper transcription timed out after 120s!");
                     Err(anyhow::anyhow!("Transcription timed out. Try a shorter recording or a smaller model."))
                 }
             }

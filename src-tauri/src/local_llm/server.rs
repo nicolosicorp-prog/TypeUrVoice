@@ -136,7 +136,7 @@ impl LlmServer {
 
         let binary = sidecar_path()?;
         let port = free_port()?;
-        let log_path = crate::storage::settings::voiceink_data_dir()?.join("llama-server.log");
+        let log_path = crate::storage::settings::typeurvoice_data_dir()?.join("llama-server.log");
         let log = std::fs::File::create(&log_path)?;
 
         let started = Instant::now();
@@ -247,7 +247,7 @@ fn sidecar_path() -> Result<PathBuf> {
     // the build script's output in debug builds and tests only.
     #[cfg(any(debug_assertions, test))]
     {
-        let triple = env!("VOICEINK_TARGET_TRIPLE");
+        let triple = env!("TYPEURVOICE_TARGET_TRIPLE");
         let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
             .join(format!("llama-server-{}{}", triple, if cfg!(windows) { ".exe" } else { "" }));
@@ -256,7 +256,7 @@ fn sidecar_path() -> Result<PathBuf> {
         }
     }
     Err(anyhow!(
-        "Built-in model server is missing from the app bundle ({}). Reinstall VoiceInk.",
+        "Built-in model server is missing from the app bundle ({}). Reinstall TypeUrVoice.",
         candidate.display()
     ))
 }
@@ -273,7 +273,7 @@ fn log_tail(path: &std::path::Path) -> Option<String> {
 }
 
 fn pid_file() -> Option<PathBuf> {
-    crate::storage::settings::voiceink_data_dir().ok().map(|d| d.join("llama-server.pid"))
+    crate::storage::settings::typeurvoice_data_dir().ok().map(|d| d.join("llama-server.pid"))
 }
 
 fn write_pid_file(pid: u32) {
@@ -288,7 +288,7 @@ fn remove_pid_file() {
     }
 }
 
-/// Kill a `llama-server` left running by a previous VoiceInk that crashed.
+/// Kill a `llama-server` left running by a previous TypeUrVoice that crashed.
 /// Only kills the PID if it still belongs to a process named llama-server,
 /// so a recycled PID can never take out an unrelated process.
 pub fn kill_orphan() {

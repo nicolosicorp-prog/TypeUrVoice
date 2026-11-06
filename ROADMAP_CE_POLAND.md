@@ -28,7 +28,7 @@ These prevent literally everything else. Do them first.
 
 ### 0.1 Rebrand
 
-The name "VoiceInk" is owned by Beingpax (tryvoiceink.com, ~4.7k GitHub stars, paid product). You will lose every SEO battle and risk a trademark complaint.
+The name "TypeUrVoice" is owned by Beingpax (trytypeurvoice.com, ~4.7k GitHub stars, paid product). You will lose every SEO battle and risk a trademark complaint.
 
 **Naming criteria:**
 - Pronounceable in Czech, Slovak, Polish, English without modification

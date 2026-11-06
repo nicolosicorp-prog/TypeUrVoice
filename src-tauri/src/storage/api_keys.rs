@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use super::{restrict_permissions, settings::voiceink_data_dir};
+use super::{restrict_permissions, settings::typeurvoice_data_dir};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct KeyStore {
@@ -29,11 +29,11 @@ pub struct KeyStore {
 }
 
 fn keys_path() -> Result<PathBuf> {
-    Ok(voiceink_data_dir()?.join("keys.json"))
+    Ok(typeurvoice_data_dir()?.join("keys.json"))
 }
 
 fn legacy_openai_path() -> Result<PathBuf> {
-    Ok(voiceink_data_dir()?.join(".api_key"))
+    Ok(typeurvoice_data_dir()?.join(".api_key"))
 }
 
 pub fn load() -> Result<KeyStore> {

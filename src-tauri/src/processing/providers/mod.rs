@@ -54,7 +54,7 @@ pub async fn complete(
     system: &str,
     user: &str,
 ) -> Result<String> {
-    eprintln!("[VoiceInk] LLM request → {} (model: {}, protocol: {:?}, temp: {})",
+    eprintln!("[TypeUrVoice] LLM request → {} (model: {}, protocol: {:?}, temp: {})",
         cfg.endpoint, cfg.model, cfg.protocol, cfg.temperature);
 
     let mut attempts = 0u8;
@@ -76,13 +76,13 @@ pub async fn complete(
                 let status = response.status();
                 let is_retryable = status.as_u16() == 429 || status.is_server_error();
                 if is_retryable && attempts < 2 {
-                    eprintln!("[VoiceInk] LLM transient error {} — retrying in 2s", status.as_u16());
+                    eprintln!("[TypeUrVoice] LLM transient error {} — retrying in 2s", status.as_u16());
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
                 if !status.is_success() {
                     let body = response.text().await.unwrap_or_default();
-                    eprintln!("[VoiceInk] LLM error {}: {}", status.as_u16(), body);
+                    eprintln!("[TypeUrVoice] LLM error {}: {}", status.as_u16(), body);
                     return Err(anyhow::anyhow!("LLM API error {}: {}", status.as_u16(), body));
                 }
                 let raw_body = response.text().await?;
@@ -92,16 +92,16 @@ pub async fn complete(
                     Protocol::Gemini     => gemini::parse_response(&raw_body)?,
                 };
                 let cleaned = strip_code_fence(&text);
-                eprintln!("[VoiceInk] LLM response: {} chars", cleaned.len());
+                eprintln!("[TypeUrVoice] LLM response: {} chars", cleaned.len());
                 return Ok(cleaned);
             }
             Err(e) => {
                 if attempts < 2 {
-                    eprintln!("[VoiceInk] LLM connection error: {} — retrying in 2s", e);
+                    eprintln!("[TypeUrVoice] LLM connection error: {} — retrying in 2s", e);
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
-                eprintln!("[VoiceInk] LLM connection failed: {}", e);
+                eprintln!("[TypeUrVoice] LLM connection failed: {}", e);
                 return Err(anyhow::anyhow!("Cannot connect to LLM: {}. Check that the service is running.", e));
             }
         }

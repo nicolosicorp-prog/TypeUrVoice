@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn hash_of_known_bytes() {
         let mut tmp = std::env::temp_dir();
-        tmp.push(format!("voiceink_hash_known_{}.bin", std::process::id()));
+        tmp.push(format!("typeurvoice_hash_known_{}.bin", std::process::id()));
         {
             let mut f = std::fs::File::create(&tmp).unwrap();
             f.write_all(b"hello").unwrap();
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn verify_rejects_mismatch() {
         let mut tmp = std::env::temp_dir();
-        tmp.push(format!("voiceink_hash_mismatch_{}.bin", std::process::id()));
+        tmp.push(format!("typeurvoice_hash_mismatch_{}.bin", std::process::id()));
         {
             let mut f = std::fs::File::create(&tmp).unwrap();
             f.write_all(b"hello").unwrap();

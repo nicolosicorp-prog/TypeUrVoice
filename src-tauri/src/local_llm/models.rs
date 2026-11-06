@@ -90,7 +90,7 @@ pub fn lookup(key: &str) -> Option<&'static LlmModel> {
 }
 
 pub fn models_dir() -> Result<PathBuf> {
-    let dir = crate::storage::settings::voiceink_data_dir()?.join("llm-models");
+    let dir = crate::storage::settings::typeurvoice_data_dir()?.join("llm-models");
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }

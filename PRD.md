@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD)
 
-## VoiceInk — Intelligent Voice-to-Text for Desktop
+## TypeUrVoice — Intelligent Voice-to-Text for Desktop
 
 **Version:** 1.0  
 **Last Updated:** April 13, 2026  
@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-VoiceInk is a lightweight, always-on desktop application for Windows and macOS that converts speech into clean, polished text in real time. It runs quietly in the system tray with minimal resource usage and activates instantly via a global keyboard shortcut. The app leverages either the OpenAI API (Whisper + GPT) or a local LLM to transcribe, clean, correct, summarize, and translate spoken input — then pastes the result directly into whatever application the user is working in.
+TypeUrVoice is a lightweight, always-on desktop application for Windows and macOS that converts speech into clean, polished text in real time. It runs quietly in the system tray with minimal resource usage and activates instantly via a global keyboard shortcut. The app leverages either the OpenAI API (Whisper + GPT) or a local LLM to transcribe, clean, correct, summarize, and translate spoken input — then pastes the result directly into whatever application the user is working in.
 
 The core philosophy: **speak naturally, get perfect text.** No switching apps, no copy-pasting, no editing out "umm" and "uhh" afterward.
 
@@ -111,7 +111,7 @@ An optional notification toast shows a preview of the pasted text with an "Undo"
 
 ### 6.1 Personal Dictionary
 
-Users can add custom words, names, technical terms, and brand names that the transcription engine should recognize and spell correctly (e.g., "Kubernetes", "Svelte", "VoiceInk").
+Users can add custom words, names, technical terms, and brand names that the transcription engine should recognize and spell correctly (e.g., "Kubernetes", "Svelte", "TypeUrVoice").
 
 ### 6.2 History and Recent Activity
 
@@ -200,7 +200,7 @@ Accessed from the tray menu. Organized into tabs:
 ## 9. Privacy and Security
 
 - **Local-first option:** Users who choose the local LLM path have fully offline processing. No audio or text leaves the device.
-- **Cloud path:** Audio is sent to OpenAI's API using the user's own API key. No data is stored by VoiceInk servers (there are no VoiceInk servers — the app communicates directly with the provider).
+- **Cloud path:** Audio is sent to OpenAI's API using the user's own API key. No data is stored by TypeUrVoice servers (there are no TypeUrVoice servers — the app communicates directly with the provider).
 - **Temporary audio:** Audio buffers are held in memory only during processing and discarded immediately after transcription.
 - **No telemetry** by default. Optional anonymous usage analytics (opt-in only).
 
@@ -233,7 +233,7 @@ Linux support is a future consideration.
 
 ## 12. Competitive Landscape
 
-| Feature | VoiceInk | Wispr Flow | SuperWhisper | WhisperTyping |
+| Feature | TypeUrVoice | Wispr Flow | SuperWhisper | WhisperTyping |
 |---|---|---|---|---|
 | Windows + macOS | ✅ | ✅ | ✅ | Windows only |
 | Hold-to-record | ✅ | ✅ | ✅ | ✅ |
@@ -303,7 +303,7 @@ Linux support is a future consideration.
 | Microphone permissions (macOS) | App cannot record | Clear permission request flow; troubleshooting guide |
 | Local model download size (~1–3 GB) | Friction for offline users | Progressive download; start with cloud, download in background |
 | Clipboard conflicts with other apps | Paste fails or overwrites | Clipboard save/restore around paste; configurable paste method |
-| Privacy concerns with cloud processing | User distrust | Prominent local-only mode; no VoiceInk servers in the data path |
+| Privacy concerns with cloud processing | User distrust | Prominent local-only mode; no TypeUrVoice servers in the data path |
 
 ---
 

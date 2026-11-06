@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
   <key>NSMicrophoneUsageDescription</key>
-  <string>VoiceInk needs microphone access to transcribe your speech. Audio is processed by your API provider and never stored by VoiceInk.</string>
+  <string>TypeUrVoice needs microphone access to transcribe your speech. Audio is processed by your API provider and never stored by TypeUrVoice.</string>
   <key>NSAppleEventsUsageDescription</key>
-  <string>VoiceInk needs automation access to paste transcribed text into other applications.</string>
+  <string>TypeUrVoice needs automation access to paste transcribed text into other applications.</string>
 </dict>
 </plist>

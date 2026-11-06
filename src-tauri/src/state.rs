@@ -553,6 +553,6 @@ impl Default for AppState {
 pub type SharedState = Arc<Mutex<AppState>>;
 pub type SharedSettings = Arc<Mutex<Settings>>;
 
-/// Set to true when the user explicitly clicks "Quit VoiceInk" from the tray.
+/// Set to true when the user explicitly clicks "Quit TypeUrVoice" from the tray.
 /// Checked by the ExitRequested handler to allow intentional quits through.
 pub struct QuitFlag(pub AtomicBool);

@@ -33,7 +33,7 @@ export function DictionaryTab({ settings, onUpdate }: Props) {
         <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
           <div style={{ flex: 1 }}>
             <Input
-              placeholder="e.g. Kubernetes, VoiceInk"
+              placeholder="e.g. Kubernetes, TypeUrVoice"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addWord()}

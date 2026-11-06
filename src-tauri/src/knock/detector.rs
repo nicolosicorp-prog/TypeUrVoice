@@ -364,12 +364,12 @@ mod tests {
 
     /// Replays a recording from the calibration recorder and prints what
     /// fires per labelled phase:
-    /// VOICEINK_KNOCK_CSV=samples.csv [VOICEINK_KNOCK_EVENTS=events.csv] \
+    /// TYPEURVOICE_KNOCK_CSV=samples.csv [TYPEURVOICE_KNOCK_EVENTS=events.csv] \
     ///   cargo test --release --lib knock_replay -- --ignored --nocapture
     #[test]
     #[ignore]
     fn knock_replay() {
-        let Ok(path) = std::env::var("VOICEINK_KNOCK_CSV") else { return };
+        let Ok(path) = std::env::var("TYPEURVOICE_KNOCK_CSV") else { return };
         let text = std::fs::read_to_string(path).unwrap();
         let samples: Vec<[f64; 4]> = text
             .lines()
@@ -380,7 +380,7 @@ mod tests {
             })
             .collect();
         let mut phases: Vec<(String, f64, f64)> = Vec::new();
-        if let Some(events) = std::env::var("VOICEINK_KNOCK_EVENTS").ok().and_then(|p| std::fs::read_to_string(p).ok()) {
+        if let Some(events) = std::env::var("TYPEURVOICE_KNOCK_EVENTS").ok().and_then(|p| std::fs::read_to_string(p).ok()) {
             let mut start = 0.0;
             for l in events.lines().skip(1) {
                 let f: Vec<&str> = l.split(',').collect();

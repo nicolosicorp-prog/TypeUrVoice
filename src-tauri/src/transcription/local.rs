@@ -9,10 +9,7 @@ use std::path::PathBuf;
 use super::models;
 
 pub fn models_dir() -> Result<PathBuf> {
-    let dir = dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("VoiceInk")
-        .join("models");
+    let dir = crate::storage::settings::typeurvoice_data_dir()?.join("models");
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
@@ -206,7 +203,7 @@ fn resample(input: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
     out
 }
 
-/// Manual benchmark: `VOICEINK_BENCH_WAV=/path/16k-mono.wav cargo test --release
+/// Manual benchmark: `TYPEURVOICE_BENCH_WAV=/path/16k-mono.wav cargo test --release
 /// --lib bench_local -- --ignored --nocapture`. Uses the user's downloaded
 /// turbo-q5 model; prints load and inference time.
 #[cfg(all(test, feature = "local-whisper"))]
@@ -214,8 +211,8 @@ mod bench {
     #[test]
     #[ignore]
     fn bench_local() {
-        let path = std::env::var("VOICEINK_BENCH_WAV").expect("set VOICEINK_BENCH_WAV");
-        let model = std::env::var("VOICEINK_BENCH_MODEL").unwrap_or_else(|_| "turbo-q5".into());
+        let path = std::env::var("TYPEURVOICE_BENCH_WAV").expect("set TYPEURVOICE_BENCH_WAV");
+        let model = std::env::var("TYPEURVOICE_BENCH_MODEL").unwrap_or_else(|_| "turbo-q5".into());
         let mut reader = hound::WavReader::open(path).unwrap();
         let samples: Vec<f32> = reader.samples::<i16>().map(|s| s.unwrap() as f32 / 32768.0).collect();
         let cache = super::super::whisper_cache::WhisperCache::new();

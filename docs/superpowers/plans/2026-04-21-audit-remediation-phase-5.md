@@ -1,4 +1,4 @@
-# VoiceInk Audit Remediation — Phase 5 Implementation Plan
+# TypeUrVoice Audit Remediation — Phase 5 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -192,7 +192,7 @@ pub fn hash_file(path: &Path) -> Result<String> {
 pub fn verify(model_key: &str, path: &Path) -> Result<()> {
     let Some(expected) = expected_hash(model_key) else {
         eprintln!(
-            "[VoiceInk] model_hashes: no pinned hash for {:?} — skipping verification",
+            "[TypeUrVoice] model_hashes: no pinned hash for {:?} — skipping verification",
             model_key
         );
         return Ok(());
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn hash_of_known_bytes() {
         let mut tmp = std::env::temp_dir();
-        tmp.push("voiceink_hash_test.bin");
+        tmp.push("typeurvoice_hash_test.bin");
         {
             let mut f = std::fs::File::create(&tmp).unwrap();
             f.write_all(b"hello").unwrap();
@@ -399,7 +399,7 @@ Because we can't run the GUI in this plan, document the manual test:
 • Confirm: progress bar goes to 100%, then "Downloaded" state appears
 • Check crash.log — no "Model verification failed" entry
 • Simulate tampering:
-    echo "garbage" >> ~/Library/Application\ Support/VoiceInk/models/ggml-small-q5_1.bin
+    echo "garbage" >> ~/Library/Application\ Support/TypeUrVoice/models/ggml-small-q5_1.bin
     # then record once — you should get a toast error referencing "delete and re-download"
 ```
 
@@ -510,13 +510,13 @@ Change this block (currently around line 319–333):
     let mut settings = with_settings(app, |s| s.clone());
     // Override source_language if a shortcut-specific language was set
     if let Some(lang) = active_language {
-        eprintln!("[VoiceInk] Using shortcut language override: {}", lang);
+        eprintln!("[TypeUrVoice] Using shortcut language override: {}", lang);
         settings.source_language = lang;
     }
     let api_key = match storage::settings::load_api_key() {
         Ok(k) => k,
         Err(e) => {
-            eprintln!("[VoiceInk] API key store error: {}", e);
+            eprintln!("[TypeUrVoice] API key store error: {}", e);
             None
         }
     };
@@ -528,13 +528,13 @@ to:
 ```rust
     let mut settings = with_settings(app, |s| s.clone());
     if let Some(lang) = active_language {
-        eprintln!("[VoiceInk] Using shortcut language override: {}", lang);
+        eprintln!("[TypeUrVoice] Using shortcut language override: {}", lang);
         settings.source_language = lang;
     }
     let api_key = match storage::settings::load_api_key() {
         Ok(k) => k,
         Err(e) => {
-            eprintln!("[VoiceInk] API key store error: {}", e);
+            eprintln!("[TypeUrVoice] API key store error: {}", e);
             None
         }
     };
@@ -707,12 +707,12 @@ pub(super) async fn gpt_complete(
         req = req.bearer_auth(key);
     }
 
-    eprintln!("[VoiceInk] LLM request → {} (model: {})", cfg.endpoint, cfg.model);
+    eprintln!("[TypeUrVoice] LLM request → {} (model: {})", cfg.endpoint, cfg.model);
 
     let response = match req.send().await {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[VoiceInk] LLM connection failed: {}", e);
+            eprintln!("[TypeUrVoice] LLM connection failed: {}", e);
             return Err(anyhow::anyhow!("Cannot connect to LLM: {}. Check that the service is running.", e));
         }
     };
@@ -720,7 +720,7 @@ pub(super) async fn gpt_complete(
     let status = response.status();
     if !status.is_success() {
         let body = response.text().await.unwrap_or_default();
-        eprintln!("[VoiceInk] LLM error {}: {}", status.as_u16(), body);
+        eprintln!("[TypeUrVoice] LLM error {}: {}", status.as_u16(), body);
         return Err(anyhow::anyhow!("LLM API error {}: {}", status.as_u16(), body));
     }
 
@@ -728,7 +728,7 @@ pub(super) async fn gpt_complete(
     let result: ChatResponse = match serde_json::from_str(&raw_body) {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[VoiceInk] LLM response parse error: {}. Raw: {:.200}", e, raw_body);
+            eprintln!("[TypeUrVoice] LLM response parse error: {}. Raw: {:.200}", e, raw_body);
             return Err(anyhow::anyhow!("Failed to parse LLM response: {}", e));
         }
     };
@@ -742,13 +742,13 @@ pub(super) async fn gpt_complete(
     let text = if !content.is_empty() {
         content.to_string()
     } else if !reasoning.is_empty() {
-        eprintln!("[VoiceInk] LLM content was empty — using reasoning_content as fallback");
+        eprintln!("[TypeUrVoice] LLM content was empty — using reasoning_content as fallback");
         reasoning.to_string()
     } else {
         String::new()
     };
 
-    eprintln!("[VoiceInk] LLM response: {} chars", text.len());
+    eprintln!("[TypeUrVoice] LLM response: {} chars", text.len());
     Ok(text)
 }
 ```
@@ -774,11 +774,11 @@ pub async fn process(
             match result {
                 Ok(text) if !text.trim().is_empty() => text,
                 Ok(_) => {
-                    eprintln!("[VoiceInk] LLM returned empty cleanup — falling back to raw text");
+                    eprintln!("[TypeUrVoice] LLM returned empty cleanup — falling back to raw text");
                     raw_text.to_string()
                 }
                 Err(e) => {
-                    eprintln!("[VoiceInk] Cleanup failed ({}) — falling back to raw text", e);
+                    eprintln!("[TypeUrVoice] Cleanup failed ({}) — falling back to raw text", e);
                     raw_text.to_string()
                 }
             }
@@ -788,11 +788,11 @@ pub async fn process(
             match result {
                 Ok(text) if !text.trim().is_empty() => text,
                 Ok(_) => {
-                    eprintln!("[VoiceInk] LLM returned empty polish — falling back to raw text");
+                    eprintln!("[TypeUrVoice] LLM returned empty polish — falling back to raw text");
                     raw_text.to_string()
                 }
                 Err(e) => {
-                    eprintln!("[VoiceInk] Polish failed ({}) — falling back to raw text", e);
+                    eprintln!("[TypeUrVoice] Polish failed ({}) — falling back to raw text", e);
                     raw_text.to_string()
                 }
             }
@@ -842,7 +842,7 @@ async fn test_text_processor(
     let api_key = match storage::settings::load_api_key() {
         Ok(k) => k,
         Err(e) => {
-            eprintln!("[VoiceInk] API key store error: {}", e);
+            eprintln!("[TypeUrVoice] API key store error: {}", e);
             None
         }
     };
@@ -1171,15 +1171,15 @@ pub async fn transcribe(
             match result {
                 Ok(Ok(Ok(inner))) => inner,
                 Ok(Ok(Err(_panic))) => {
-                    eprintln!("[VoiceInk] Whisper transcription panicked!");
+                    eprintln!("[TypeUrVoice] Whisper transcription panicked!");
                     Err(anyhow::anyhow!("Local transcription crashed. Try a different model or use Cloud engine."))
                 }
                 Ok(Err(e)) => {
-                    eprintln!("[VoiceInk] Whisper task join error: {}", e);
+                    eprintln!("[TypeUrVoice] Whisper task join error: {}", e);
                     Err(anyhow::anyhow!("Transcription task failed: {}", e))
                 }
                 Err(_) => {
-                    eprintln!("[VoiceInk] Whisper transcription timed out after 120s!");
+                    eprintln!("[TypeUrVoice] Whisper transcription timed out after 120s!");
                     Err(anyhow::anyhow!("Transcription timed out. Try a shorter recording or a smaller model."))
                 }
             }
@@ -1340,7 +1340,7 @@ Run (this lives on the engineer's machine, not in the repo):
 
 ```bash
 cargo install tauri-cli --version '^2' --locked
-tauri signer generate -w ~/.config/voiceink-updater.key
+tauri signer generate -w ~/.config/typeurvoice-updater.key
 # prints a PUBLIC KEY — copy the base64 string (starts with "dW50cn...")
 ```
 
@@ -1351,9 +1351,9 @@ Open `src-tauri/tauri.conf.json`. Add a top-level `"plugins"` key. The final fil
 ```json
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "VoiceInk",
+  "productName": "TypeUrVoice",
   "version": "0.1.0",
-  "identifier": "com.voiceink.app",
+  "identifier": "com.typeurvoice.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -1362,9 +1362,9 @@ Open `src-tauri/tauri.conf.json`. Add a top-level `"plugins"` key. The final fil
   },
   "app": {
     "windows": [
-      { "label": "settings", "title": "VoiceInk Settings", "width": 580, "height": 500, "minWidth": 580, "minHeight": 480, "resizable": false, "visible": false, "decorations": true, "center": true, "alwaysOnTop": false },
-      { "label": "overlay", "title": "VoiceInk", "width": 220, "height": 52, "resizable": false, "visible": false, "decorations": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "x": 0, "y": 0 },
-      { "label": "onboarding", "title": "Welcome to VoiceInk", "width": 500, "height": 420, "resizable": false, "visible": false, "decorations": true, "center": true }
+      { "label": "settings", "title": "TypeUrVoice Settings", "width": 580, "height": 500, "minWidth": 580, "minHeight": 480, "resizable": false, "visible": false, "decorations": true, "center": true, "alwaysOnTop": false },
+      { "label": "overlay", "title": "TypeUrVoice", "width": 220, "height": 52, "resizable": false, "visible": false, "decorations": false, "transparent": true, "alwaysOnTop": true, "skipTaskbar": true, "x": 0, "y": 0 },
+      { "label": "onboarding", "title": "Welcome to TypeUrVoice", "width": 500, "height": 420, "resizable": false, "visible": false, "decorations": true, "center": true }
     ],
     "macOSPrivateApi": true,
     "security": { "csp": null }
@@ -1373,7 +1373,7 @@ Open `src-tauri/tauri.conf.json`. Add a top-level `"plugins"` key. The final fil
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/voiceink/voiceink/releases/latest/download/latest.json"
+        "https://github.com/typeurvoice/typeurvoice/releases/latest/download/latest.json"
       ],
       "pubkey": "REPLACE_WITH_BASE64_PUBLIC_KEY_FROM_STEP_5_2",
       "dialog": true
@@ -1574,7 +1574,7 @@ Inside the existing `<Section title="System">` block near the bottom of the comp
       <Section title="System">
         <Toggle
           label="Start on login"
-          description="Launch VoiceInk when you log in"
+          description="Launch TypeUrVoice when you log in"
           checked={settings.startOnLogin}
           onChange={val => onUpdate({ startOnLogin: val })}
         />
@@ -1688,7 +1688,7 @@ const BACKUP_COUNT: usize = 1; // crash.log + crash.log.1
 static ROTATE_LOCK: Mutex<()> = Mutex::new(());
 
 fn log_path() -> Option<PathBuf> {
-    dirs::data_dir().map(|d| d.join("VoiceInk").join("crash.log"))
+    dirs::data_dir().map(|d| d.join("TypeUrVoice").join("crash.log"))
 }
 
 fn rotate_if_needed(path: &std::path::Path) {
@@ -1784,7 +1784,7 @@ Expected: `2 passed`.
 - [ ] **Step 7.4: Manual smoke test**
 
 ```text
-• Pre-populate: dd if=/dev/zero bs=1024 count=2048 of=~/Library/Application\ Support/VoiceInk/crash.log
+• Pre-populate: dd if=/dev/zero bs=1024 count=2048 of=~/Library/Application\ Support/TypeUrVoice/crash.log
 • Launch the app and trigger any log line (start + stop recording).
 • Confirm: crash.log is now small (< 1 MB) and crash.log.1 holds the old 2 MB.
 ```
@@ -2158,7 +2158,7 @@ Expected: clean release build. The `bundle_dmg.sh` step still fails per CLAUDE.m
 
 Run:
 ```bash
-pkill -f "target/debug/voiceink" 2>/dev/null; lsof -ti :1420 | xargs kill -9 2>/dev/null
+pkill -f "target/debug/typeurvoice" 2>/dev/null; lsof -ti :1420 | xargs kill -9 2>/dev/null
 export PATH="/opt/homebrew/bin:$PATH" && source "$HOME/.cargo/env"
 npm run tauri dev &
 ```

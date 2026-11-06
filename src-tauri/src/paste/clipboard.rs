@@ -14,11 +14,11 @@ pub fn paste_text(text: &str) -> Result<()> {
     simulate_paste().map_err(|e| {
         crate::log_to_file(&format!("Paste: Cmd+V simulation failed: {}", e));
         anyhow::anyhow!(
-            "Text copied — press Cmd+V. Auto-paste was blocked: allow VoiceInk in \
+            "Text copied — press Cmd+V. Auto-paste was blocked: allow TypeUrVoice in \
              System Settings → Privacy & Security → Accessibility."
         )
     })?;
-    eprintln!("[VoiceInk] Paste: simulated Cmd+V");
+    eprintln!("[TypeUrVoice] Paste: simulated Cmd+V");
     Ok(())
 }
 
@@ -33,15 +33,15 @@ pub fn copy_to_clipboard(text: &str) -> Result<()> {
 fn write_clipboard(text: &str) -> Result<()> {
     match Clipboard::new().and_then(|mut c| c.set_text(text.to_string())) {
         Ok(_) => {
-            eprintln!("[VoiceInk] Clipboard: wrote {} chars via arboard", text.len());
+            eprintln!("[TypeUrVoice] Clipboard: wrote {} chars via arboard", text.len());
             Ok(())
         }
         Err(e) => {
-            eprintln!("[VoiceInk] Clipboard: arboard failed ({}), trying pbcopy fallback", e);
+            eprintln!("[TypeUrVoice] Clipboard: arboard failed ({}), trying pbcopy fallback", e);
             #[cfg(target_os = "macos")]
             {
                 pbcopy(text)?;
-                eprintln!("[VoiceInk] Clipboard: wrote {} chars via pbcopy", text.len());
+                eprintln!("[TypeUrVoice] Clipboard: wrote {} chars via pbcopy", text.len());
                 Ok(())
             }
             #[cfg(not(target_os = "macos"))]
@@ -72,12 +72,12 @@ fn pbcopy(text: &str) -> Result<()> {
     Ok(())
 }
 
-/// macOS: post Cmd+V straight from VoiceInk with CoreGraphics.
+/// macOS: post Cmd+V straight from TypeUrVoice with CoreGraphics.
 ///
 /// Earlier builds shelled out to `osascript … keystroke`, which macOS
 /// attributes to osascript/System Events and which kept failing with
-/// "osascript is not allowed to send keystrokes" even with VoiceInk listed
-/// under Accessibility. Posting the event ourselves makes VoiceInk's own
+/// "osascript is not allowed to send keystrokes" even with TypeUrVoice listed
+/// under Accessibility. Posting the event ourselves makes TypeUrVoice's own
 /// Accessibility grant the only thing that matters. (The original enigo
 /// crash was a NULL CGEvent being dereferenced without permission — here
 /// trust is checked first and every pointer is null-checked.)
@@ -105,7 +105,7 @@ mod mac {
     pub const FLAG_COMMAND: u64 = 0x0010_0000;
 }
 
-/// Whether macOS lets VoiceInk post keystrokes (logged at launch).
+/// Whether macOS lets TypeUrVoice post keystrokes (logged at launch).
 #[cfg(target_os = "macos")]
 pub fn accessibility_trusted() -> bool {
     unsafe { mac::AXIsProcessTrusted() }
@@ -118,7 +118,7 @@ fn simulate_paste() -> Result<()> {
         if !AXIsProcessTrusted() {
             // No prompt here — launch already asked once; the notification
             // the caller shows explains where to allow it.
-            return Err(anyhow::anyhow!("VoiceInk is not allowed under Accessibility"));
+            return Err(anyhow::anyhow!("TypeUrVoice is not allowed under Accessibility"));
         }
         let source = CGEventSourceCreate(HID_SYSTEM_STATE); // NULL is a valid source
         let mut result = Ok(());

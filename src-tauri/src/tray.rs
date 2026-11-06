@@ -19,7 +19,7 @@ pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
     let mut builder = TrayIconBuilder::with_id("main")
         .icon_as_template(true)
-        .tooltip("VoiceInk")
+        .tooltip("TypeUrVoice")
         .menu(&menu)
         .on_menu_event(|app, event| {
             handle_menu_event(app, event.id.as_ref());
@@ -55,7 +55,7 @@ fn load_tray_icon<R: Runtime>(_app: &AppHandle<R>) -> Option<Image<'static>> {
 
 fn build_menu<R: Runtime>(app: &AppHandle<R>, settings: &crate::state::Settings) -> tauri::Result<Menu<R>> {
     let current = settings.output_mode.as_str();
-    let header = MenuItem::with_id(app, "header", "VoiceInk", false, None::<&str>)?;
+    let header = MenuItem::with_id(app, "header", "TypeUrVoice", false, None::<&str>)?;
 
     let mode_raw = MenuItem::with_id(
         app, "mode_raw",
@@ -113,7 +113,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, settings: &crate::state::Settings)
 
     let recent  = MenuItem::with_id(app, "recent",   "Recent Activity", true, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
-    let quit    = MenuItem::with_id(app, "quit",     "Quit VoiceInk",   true, None::<&str>)?;
+    let quit    = MenuItem::with_id(app, "quit",     "Quit TypeUrVoice",   true, None::<&str>)?;
 
     Menu::with_items(app, &[
         &header,

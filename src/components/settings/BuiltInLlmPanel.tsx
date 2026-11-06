@@ -69,7 +69,7 @@ export function BuiltInLlmPanel({ settings, onUpdate }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', marginTop: 12 }}>
       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-        Runs a small AI model directly inside VoiceInk on your Mac's GPU. No Ollama or LM Studio,
+        Runs a small AI model directly inside TypeUrVoice on your Mac's GPU. No Ollama or LM Studio,
         no API key, and your text never leaves this computer.
       </div>
 
@@ -161,7 +161,7 @@ export function BuiltInLlmPanel({ settings, onUpdate }: Props) {
         label="Load automatically and unload when idle"
         description={settings.builtinLlmAuto
           ? 'The model loads when you start recording and frees its memory after you stop using it.'
-          : 'The model stays loaded from launch until you quit VoiceInk — fastest, but always uses memory.'}
+          : 'The model stays loaded from launch until you quit TypeUrVoice — fastest, but always uses memory.'}
         checked={settings.builtinLlmAuto}
         onChange={val => onUpdate({ builtinLlmAuto: val })}
       />

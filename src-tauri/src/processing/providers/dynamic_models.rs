@@ -17,7 +17,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::storage::settings::voiceink_data_dir;
+use crate::storage::settings::typeurvoice_data_dir;
 
 const CACHE_TTL_SECONDS: u64 = 24 * 60 * 60; // 24h
 
@@ -37,7 +37,7 @@ struct ModelCache {
 }
 
 fn cache_path() -> Result<PathBuf> {
-    Ok(voiceink_data_dir()?.join("model_cache.json"))
+    Ok(typeurvoice_data_dir()?.join("model_cache.json"))
 }
 
 fn now_secs() -> u64 {

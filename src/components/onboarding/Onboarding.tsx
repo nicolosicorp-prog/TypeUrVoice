@@ -21,7 +21,7 @@ export function Onboarding() {
 
   const audioPrivacyCopy = engine === 'local'
     ? 'Your audio is transcribed entirely on your device — never sent to any server.'
-    : 'Your audio is sent to your API provider for transcription — never stored by VoiceInk.'
+    : 'Your audio is sent to your API provider for transcription — never stored by TypeUrVoice.'
 
   const finish = async () => {
     // Persist FIRST. Everything below is best-effort window plumbing; if the
@@ -91,8 +91,8 @@ export function Onboarding() {
       {step === 'welcome' && (
         <StepCard
           icon={<div style={{ fontSize: 36 }}>🎙</div>}
-          title="Welcome to VoiceInk"
-          desc="Speak naturally, get perfect text. Press your shortcut, say what you want to write, and VoiceInk handles the rest."
+          title="Welcome to TypeUrVoice"
+          desc="Speak naturally, get perfect text. Press your shortcut, say what you want to write, and TypeUrVoice handles the rest."
           action={<Button variant="primary" size="lg" onClick={() => setStep('permissions')}>Get Started</Button>}
         />
       )}
@@ -101,7 +101,7 @@ export function Onboarding() {
         <StepCard
           icon={<Mic size={32} style={{ color: 'var(--text-primary)' }} />}
           title="Microphone access"
-          desc={`VoiceInk needs microphone access to capture your speech. ${audioPrivacyCopy}`}
+          desc={`TypeUrVoice needs microphone access to capture your speech. ${audioPrivacyCopy}`}
           action={
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', width: '100%', alignItems: 'center' }}>
               {!permGranted ? (
@@ -139,7 +139,7 @@ export function Onboarding() {
         <StepCard
           icon={<Key size={32} style={{ color: 'var(--text-primary)' }} />}
           title="Add your OpenAI API key"
-          desc="VoiceInk uses your own key — no subscription, no data stored. Get your key at platform.openai.com."
+          desc="TypeUrVoice uses your own key — no subscription, no data stored. Get your key at platform.openai.com."
           action={
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)', width: '100%', alignItems: 'center' }}>
               <div style={{ width: '100%', display: 'flex', gap: 'var(--sp-2)' }}>
@@ -187,8 +187,8 @@ export function Onboarding() {
         <StepCard
           icon={<CheckCircle size={32} style={{ color: 'var(--accent-green)' }} />}
           title="You're all set"
-          desc="Press your shortcut in any app to start recording. VoiceInk runs quietly in the menu bar."
-          action={<Button variant="primary" size="lg" onClick={finish}>Start Using VoiceInk</Button>}
+          desc="Press your shortcut in any app to start recording. TypeUrVoice runs quietly in the menu bar."
+          action={<Button variant="primary" size="lg" onClick={finish}>Start Using TypeUrVoice</Button>}
         />
       )}
 

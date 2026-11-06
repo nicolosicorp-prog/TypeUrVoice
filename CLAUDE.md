@@ -1,8 +1,8 @@
-# VoiceInk – Project Notes for Claude
+# TypeUrVoice – Project Notes for Claude
 
 ## What Was Built
 
-VoiceInk is a macOS/Windows desktop voice-to-text app built with Tauri 2 (Rust backend + React/TypeScript frontend). It lives in the system tray (menu bar), has no dock icon, and transcribes speech via a global hotkey.
+TypeUrVoice is a macOS/Windows desktop voice-to-text app built with Tauri 2 (Rust backend + React/TypeScript frontend). It lives in the system tray (menu bar), has no dock icon, and transcribes speech via a global hotkey.
 
 ### Core Architecture
 - **Tauri 2** — Rust backend + Vite/React frontend
@@ -42,7 +42,7 @@ VoiceInk is a macOS/Windows desktop voice-to-text app built with Tauri 2 (Rust b
 ### Local Model Support
 - Feature flag: `local-whisper` (enabled by default in `Cargo.toml`)
 - Requires `cmake` to build — installed via Homebrew at `/opt/homebrew/bin/cmake`
-- Models stored at `~/Library/Application Support/VoiceInk/models/`
+- Models stored at `~/Library/Application Support/TypeUrVoice/models/`
 - All recommended models are **multilingual Q5** (support Czech, Slovak, English, etc.)
 - English-only models (base-en, tiny-en) are available but not suitable for Czech/Slovak
 - Short audio (<1.5s) is padded with silence to meet whisper.cpp minimum
@@ -50,7 +50,7 @@ VoiceInk is a macOS/Windows desktop voice-to-text app built with Tauri 2 (Rust b
 ### Important Rust Patterns
 - `tokio::spawn` → must use `tauri::async_runtime::spawn` in sync hotkey callbacks
 - `cpal::Stream` is `!Send` on macOS → audio runs on dedicated `std::thread`
-- `RunEvent::ExitRequested` checks `QuitFlag` — prevents exit unless user clicked "Quit VoiceInk" from tray
+- `RunEvent::ExitRequested` checks `QuitFlag` — prevents exit unless user clicked "Quit TypeUrVoice" from tray
 - `on_window_event` with `prevent_close` + `window.hide()` hides windows instead of destroying them
 - `AXIsProcessTrustedWithOptions` called via FFI at startup to prompt for accessibility permission
 - Recording state resets to Idle after 2s so subsequent recordings work
@@ -61,7 +61,7 @@ VoiceInk is a macOS/Windows desktop voice-to-text app built with Tauri 2 (Rust b
 - Overlay is hidden BEFORE paste step (step 3.5 in pipeline) so focus returns to user's app
 - Paste uses `osascript` on macOS (not enigo) — runs as subprocess, can never SIGSEGV the main process
 - `enigo` is Windows-only dependency (`[target.'cfg(target_os = "windows")'.dependencies]`)
-- `log_to_file()` writes to `~/Library/Application Support/VoiceInk/crash.log` — survives process death
+- `log_to_file()` writes to `~/Library/Application Support/TypeUrVoice/crash.log` — survives process death
 - Panic hook logs to crash.log before crashing
 - Pipeline steps logged to crash.log for post-mortem diagnosis
 
@@ -81,9 +81,9 @@ VoiceInk is a macOS/Windows desktop voice-to-text app built with Tauri 2 (Rust b
 - Both directions keep tray checkmarks and UI radio buttons in sync
 
 ### Settings Files
-- **Main settings:** `~/Library/Application Support/VoiceInk/settings.json` — all settings except API key
+- **Main settings:** `~/Library/Application Support/TypeUrVoice/settings.json` — all settings except API key
   - Defaults: engine=local, localModel=small-q5, outputMode=clean, sourceLanguage=auto, recordingMode=hold, shortcut=Option+Space (macOS), primaryLanguage=cs, secondaryLanguage=en, secondaryShortcut=null
-- **API key:** `~/.local/share/VoiceInk/.api_key` — OpenAI API key (file-based, not keychain)
+- **API key:** `~/.local/share/TypeUrVoice/.api_key` — OpenAI API key (file-based, not keychain)
 
 ---
 
@@ -97,7 +97,7 @@ Embedded icon via `include_bytes!("../icons/32x32.png")` in `tray.rs`. Works in 
 
 ### 3. App Crash on Paste (SIGSEGV from enigo)
 **Root cause:** `enigo` called CoreGraphics FFI to simulate Cmd+V. Without Accessibility permission, `CGEventCreateKeyboardEvent` returned NULL, enigo dereferenced it → SIGSEGV. `catch_unwind` cannot catch OS signals.
-**Fix:** Replaced enigo with `osascript` (AppleScript) on macOS. Runs as a child process — if it fails, VoiceInk gets an error message, never crashes. enigo kept only for Windows.
+**Fix:** Replaced enigo with `osascript` (AppleScript) on macOS. Runs as a child process — if it fails, TypeUrVoice gets an error message, never crashes. enigo kept only for Windows.
 **Diagnosis method:** `crash.log` showed "Step 4: Pasting text" with no subsequent "Pipeline completed" entry.
 
 ### 4. Recording Too Short in Hold Mode
@@ -112,7 +112,7 @@ Embedded icon via `include_bytes!("../icons/32x32.png")` in `tray.rs`. Works in 
 **Root cause:** Overlay window (`alwaysOnTop: true`) stole focus when shown. Paste simulated Cmd+V into the overlay instead of user's app.
 **Fix:** (a) `set_ignore_cursor_events(true)` on overlay, (b) overlay hidden before paste step with 200ms delay for macOS focus return.
 
-### 7. Quit VoiceInk Did Nothing
+### 7. Quit TypeUrVoice Did Nothing
 **Root cause:** `ExitRequested` handler called `api.prevent_exit()` unconditionally — blocked even intentional quit from tray menu.
 **Fix:** Added `QuitFlag` (atomic bool). Tray quit handler sets flag before `app.exit(0)`. `ExitRequested` handler checks flag — only prevents exit when flag is false.
 
@@ -137,7 +137,7 @@ Tauri's `bundle_dmg.sh` fails. Workaround: create DMG manually with `hdiutil cre
 
 ### 13. OpenAI API Key Not Persisting
 **Root cause:** `keyring` crate (v3) fails silently on unsigned dev binaries (no keychain entitlements). UI showed key saved but it never made it to the keychain. On load, `load_api_key()` returned None → "No API key configured" error.
-**Fix:** Removed `keyring` dependency entirely. API key now saves directly to `~/.local/share/VoiceInk/.api_key` (file-based). File always writable, no OS permission barriers. On load, checks file existence and reads key. Simple, reliable, works in dev and prod.
+**Fix:** Removed `keyring` dependency entirely. API key now saves directly to `~/.local/share/TypeUrVoice/.api_key` (file-based). File always writable, no OS permission barriers. On load, checks file existence and reads key. Simple, reliable, works in dev and prod.
 
 ### 14. Dual Language Shortcuts
 **Feature:** Users can set two separate shortcuts (primary + secondary) to record in different languages without visiting Settings.
@@ -169,7 +169,7 @@ Tauri's `bundle_dmg.sh` fails. Workaround: create DMG manually with `hdiutil cre
 - Clipboard always gets the transcribed text
 - Accessibility permission prompt on first launch
 - App stays alive in tray after windows close, exits on explicit Quit
-- Crash logging to `~/Library/Application Support/VoiceInk/crash.log`
+- Crash logging to `~/Library/Application Support/TypeUrVoice/crash.log`
 - Translation toggle works
 - Source language selector always visible
 - LLM text processing with OpenAI, Ollama, and LM Studio backends
@@ -186,7 +186,7 @@ Tauri's `bundle_dmg.sh` fails. Workaround: create DMG manually with `hdiutil cre
 export PATH="/opt/homebrew/bin:$PATH" && source "$HOME/.cargo/env" && npm run tauri dev
 
 # Kill app + dev server
-pkill -f "target/debug/voiceink"; lsof -ti :1420 | xargs kill -9
+pkill -f "target/debug/typeurvoice"; lsof -ti :1420 | xargs kill -9
 
 # Check for Rust errors only
 export PATH="/opt/homebrew/bin:$PATH" && source "$HOME/.cargo/env" && cargo build --manifest-path src-tauri/Cargo.toml 2>&1 | grep "^error"
@@ -199,13 +199,13 @@ export PATH="/opt/homebrew/bin:$PATH" && source "$HOME/.cargo/env" && npm run dm
 
 # Fallback if the styled DMG path breaks: plain UDZO via hdiutil
 export PATH="/opt/homebrew/bin:$PATH" && source "$HOME/.cargo/env" && npm run tauri build
-hdiutil create -volname "VoiceInk" \
-  -srcfolder src-tauri/target/release/bundle/macos/VoiceInk.app \
+hdiutil create -volname "TypeUrVoice" \
+  -srcfolder src-tauri/target/release/bundle/macos/TypeUrVoice.app \
   -ov -format UDZO \
-  src-tauri/target/release/bundle/dmg/VoiceInk_0.1.0_aarch64.dmg
+  src-tauri/target/release/bundle/dmg/TypeUrVoice_0.1.0_aarch64.dmg
 
 # View crash log
-cat ~/Library/Application\ Support/VoiceInk/crash.log
+cat ~/Library/Application\ Support/TypeUrVoice/crash.log
 ```
 
 ---
@@ -235,7 +235,7 @@ Four-phase hardening pass across safety, stability, codebase hygiene, and design
 - **Trimmed Cargo deps** — removed `log`, `env_logger`, `rodio`, `uuid`, `thiserror`, `objc`, `objc-foundation` (~30% dep bloat gone).
 - **Shared `Section` component** — `src/components/ui/Section.tsx` replaces the 6 identical local copies in every settings tab.
 - **Unified `RadioCard` primitive** — `src/components/ui/RadioCard.tsx` + `RadioCardGroup` cover both visual variants (`variant='dot'` and `variant='native'`) that used to be three separate hand-rolled radios in `OutputTab`, `SummaryTab`, `GeneralTab`. Proper ARIA (`role="radio"`/`radiogroup"`, `aria-checked`, Space/Enter keyboard activation).
-- **Shared data-dir helper** — `voiceink_data_dir()` in `storage/settings.rs` is the single source of truth; `settings_path()`, `api_key_path()`, `history.rs` all use it.
+- **Shared data-dir helper** — `typeurvoice_data_dir()` in `storage/settings.rs` is the single source of truth; `settings_path()`, `api_key_path()`, `history.rs` all use it.
 - **Dropped runtime CSS parser** — `Button.tsx` uses plain inline style objects per variant; the `parseStyle` string-splitter is gone.
 - **Tightened TypeScript** — `as any` on `model.key` replaced with narrow `LocalModel` union.
 - **Fixed misleading microcopy**:
@@ -267,7 +267,7 @@ Four-phase hardening pass across safety, stability, codebase hygiene, and design
 ### Verification
 - `cargo build` → clean (0 warnings, 0 errors) in release mode
 - `npm run build` (tsc + vite) → clean
-- DMG size: 7.1 MB (`VoiceInk_0.1.0_aarch64.dmg`)
+- DMG size: 7.1 MB (`TypeUrVoice_0.1.0_aarch64.dmg`)
 
 ---
 
@@ -291,7 +291,7 @@ Port of the Windows cloud-section fixes onto the macOS build plus a batch of dia
    - Old local-only filter in `transcription/local.rs` removed.
 
 3. **Error notifications — `show_error_notification()`** in `lib.rs:552`.
-   - Uses `NotificationExt` with title "VoiceInk — recording failed" and body truncated via `safe_truncate(msg, 140)`.
+   - Uses `NotificationExt` with title "TypeUrVoice — recording failed" and body truncated via `safe_truncate(msg, 140)`.
    - Called from both pipeline-error branches (`Ok(Err(e))` and outer-timeout `Err(_)`), and from every paste-step failure branch.
    - **Not** gated on `settings.show_notification` — errors are the one place silent-by-default is worse than noisy. Settings/main windows are usually hidden, so the Tauri event alone was invisible.
 
@@ -335,7 +335,7 @@ Port of the Windows cloud-section fixes onto the macOS build plus a batch of dia
 - `src-tauri/src/paste/clipboard.rs` — unified `write_clipboard` with `pbcopy` fallback on macOS
 
 ### Root causes confirmed from user reports
-- **M1 Air "no transcription" + "no VoiceInk folder in Library"**: Microphone permission wasn't granted / the mic was system-muted on that machine. `cpal` captured 2.1 s of pure silence → Whisper returned empty → "No speech" error. The folder *was* there (hidden `~/Library/Application Support/VoiceInk/`). New RMS logging now makes this diagnosable from a single `crash.log` line.
+- **M1 Air "no transcription" + "no TypeUrVoice folder in Library"**: Microphone permission wasn't granted / the mic was system-muted on that machine. `cpal` captured 2.1 s of pure silence → Whisper returned empty → "No speech" error. The folder *was* there (hidden `~/Library/Application Support/TypeUrVoice/`). New RMS logging now makes this diagnosable from a single `crash.log` line.
 - **"I can only assist with English text"**: Whisper misdetected language on short/quiet Czech clips and cleanup trusted Whisper over the user's explicit shortcut-language setting. Fixed by the override-priority change in item 5.
 - **Windows mysteriously worked for the same flow**: because on Windows the user had `source_language: "cs"` saved explicitly — both Whisper got the hint AND the cleanup prompt's language claim was correct.
 
@@ -352,7 +352,7 @@ Port of the Windows cloud-section fixes onto the macOS build plus a batch of dia
 - No user-visible functionality regressed — same shortcuts, same settings schema, same SQLite schema.
 
 ### Public-distribution notes (not yet implemented — discussed, deferred)
-To ship VoiceInk publicly we still need:
+To ship TypeUrVoice publicly we still need:
 1. **Apple Developer account** ($99/yr) → Developer ID Application cert → sign the `.app`.
 2. **Notarization** → Tauri handles this if `APPLE_CERTIFICATE`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` are set during `tauri build`.
 3. **`tauri-plugin-updater`** → in-place updates from a hosted `latest.json` + signed `.app.tar.gz` (Ed25519). The plugin is wired in Phase 5 but currently `active: false` (no keys yet). Once keys exist, flip to `true` and paste the public key.
@@ -424,7 +424,7 @@ If HF ever re-uploads a model, the value drifts and users get `"Model verificati
 - **New dep:** `tauri-plugin-updater = "2"` in `src-tauri/Cargo.toml`.
 - **Plugin config** in `tauri.conf.json` under a new top-level `plugins.updater`:
   ```json
-  { "active": false, "endpoints": ["https://github.com/voiceink/voiceink/releases/latest/download/latest.json"], "pubkey": "", "dialog": true }
+  { "active": false, "endpoints": ["https://github.com/typeurvoice/typeurvoice/releases/latest/download/latest.json"], "pubkey": "", "dialog": true }
   ```
   Empty `pubkey` is accepted by the plugin when `active: false` — it short-circuits validation.
 - `"updater:default"` added to `src-tauri/capabilities/default.json`.
@@ -503,18 +503,18 @@ If HF ever re-uploads a model, the value drifts and users get `"Model verificati
 
 ### Phase 5 follow-up work (not blocking merge)
 
-1. **Release signing + auto-update activation.** Generate Ed25519 keypair via `tauri signer generate -w ~/.config/voiceink-updater.key` → copy public key into `tauri.conf.json::plugins.updater.pubkey` → flip `active: true` → set up GitHub Actions release pipeline that produces signed `.app.tar.gz` + `latest.json`. Until then, the "Check for updates" button will always show "Check failed: updater is disabled". See the "Public-distribution notes" section above.
+1. **Release signing + auto-update activation.** Generate Ed25519 keypair via `tauri signer generate -w ~/.config/typeurvoice-updater.key` → copy public key into `tauri.conf.json::plugins.updater.pubkey` → flip `active: true` → set up GitHub Actions release pipeline that produces signed `.app.tar.gz` + `latest.json`. Until then, the "Check for updates" button will always show "Check failed: updater is disabled". See the "Public-distribution notes" section above.
 2. **Drop the `Arc<AppHttpClient>` double-wrap in `http.rs`.** Replace with `.manage(http::build())` where `build() -> reqwest::Client`, and `tauri::State<'_, reqwest::Client>` in commands. Saves one indirection; the client is already `Arc` internally.
 3. **Gate the 4 remaining `eprintln!` transcript sites on `diagnostics_verbose`** so dev-mode stderr respects the same privacy contract as `crash.log`. Sites: `transcription/mod.rs:97,105,112`, `lib.rs:500,568`.
 4. **Silence `resample` dead-code warning** under `--no-default-features` with `#[cfg_attr(not(feature = "local-whisper"), allow(dead_code))]`.
-5. **Consolidate `dirs::data_dir()` re-derivation.** Currently in `logging.rs`, `storage/settings.rs`, and `transcription/local.rs` (the last adds `/models` so that one's fine). The Phase-3 `voiceink_data_dir()` helper could absorb the other two.
+5. **Consolidate `dirs::data_dir()` re-derivation.** Currently in `logging.rs`, `storage/settings.rs`, and `transcription/local.rs` (the last adds `/models` so that one's fine). The Phase-3 `typeurvoice_data_dir()` helper could absorb the other two.
 6. **One-time manual GUI smoke** — was not run in the Phase 5 loop. Checklist: record via primary + secondary shortcuts → paste lands → switch engines → verify second local recording is ~2–5 s faster (cache hit) → change output mode → translate → enable verbose diagnostics and confirm `crash.log` shows/hides `text=…` accordingly → trigger a save error to confirm Toast × + Escape dismissal → attempt to set primary = secondary and confirm inline rejection → redownload a model and confirm hash check passes → tamper a model file and confirm next recording errors with the re-download hint.
 
 ---
 
 ## Onboarding Persistence Fix (April 2026)
 
-Users reported the first-run onboarding flow reappearing after they restarted their Mac and re-launched VoiceInk — even though they had already completed setup. Root-caused to a fragile settings-load path that silently wiped user config whenever the struct schema changed between versions. DMG still 7.1 MB.
+Users reported the first-run onboarding flow reappearing after they restarted their Mac and re-launched TypeUrVoice — even though they had already completed setup. Root-caused to a fragile settings-load path that silently wiped user config whenever the struct schema changed between versions. DMG still 7.1 MB.
 
 ### Root cause
 1. `storage::settings::load()` in `storage/settings.rs` uses `serde_json::from_str::<Settings>` to deserialize `settings.json`.
@@ -540,7 +540,7 @@ Users reported the first-run onboarding flow reappearing after they restarted th
 ### Verification
 - `cargo build --release` → clean (0 warnings, 0 errors).
 - `npm run build` (tsc + vite) → clean.
-- `npm run tauri build` → `bundle_dmg.sh` fails (known); `hdiutil create` produces `VoiceInk_0.1.0_aarch64.dmg` at 7.1 MB.
+- `npm run tauri build` → `bundle_dmg.sh` fails (known); `hdiutil create` produces `TypeUrVoice_0.1.0_aarch64.dmg` at 7.1 MB.
 - Fix landed on `main` as commit `bda2672` ("fix: make settings deserialization tolerant to missing fields"). Not pushed to any remote.
 
 ---
@@ -611,7 +611,7 @@ changes, no new settings fields, no Rust touched.
    picker (with not-connected fallback note), Hold vs Toggle modes (with the 600 ms
    minimum from Issue #4), Start on login, Updates, Verbose diagnostics, Show
    crash.log.
-3. **Engine Tab — Three Ways to Run VoiceInk** — the headline section. Three
+3. **Engine Tab — Three Ways to Run TypeUrVoice** — the headline section. Three
    `ModeCard` sub-components labelled with coloured pill tags:
    - **Fully Online** — Cloud Whisper + OpenAI text processing. Easiest, best
      accuracy, audio sent to OpenAI.
@@ -779,7 +779,7 @@ Big-feature add: **9 new text-processing providers** + **1 new cloud Whisper opt
 
 ### Multi-key storage
 
-**`storage/api_keys.rs`** — replaces single `~/.local/share/VoiceInk/.api_key` with `~/Library/Application Support/VoiceInk/keys.json` (chmod 0600, atomic temp+rename writes). One slot per provider. Slot keys mirror the catalog:
+**`storage/api_keys.rs`** — replaces single `~/.local/share/TypeUrVoice/.api_key` with `~/Library/Application Support/TypeUrVoice/keys.json` (chmod 0600, atomic temp+rename writes). One slot per provider. Slot keys mirror the catalog:
 - `openai`, `anthropic`, `gemini`
 - `compat:grok`, `compat:groq`, `compat:deepseek`, `compat:mistral`, `compat:openrouter`, `compat:perplexity`, `compat:together`, `compat:custom`
 
@@ -795,7 +795,7 @@ Each OpenAI-compatible preset has its own slot (option `c` from the implementati
 
 ### Dynamic model catalogue (E8)
 
-`fetch_provider_models(slot)` Tauri command + `dynamic_models::fetch_models()` backend. Cache: 24h, persisted to `~/Library/Application Support/VoiceInk/model_cache.json`. Per-provider parsers:
+`fetch_provider_models(slot)` Tauri command + `dynamic_models::fetch_models()` backend. Cache: 24h, persisted to `~/Library/Application Support/TypeUrVoice/model_cache.json`. Per-provider parsers:
 - OpenAI-style → `data: [{id}]` (works for OpenAI, Grok, Groq, DeepSeek, Mistral, OpenRouter, Together)
 - Anthropic → `data: [{id}]`
 - Gemini → `models: [{name, supported_generation_methods}]`, filtered for `generateContent`, prefix-stripped to remove `models/`
@@ -1078,7 +1078,7 @@ immediately so the flag stays correct from then on.
 
 ### Diagnostic dead-end that proved useful
 
-Before patching, I dropped the user's live `~/Library/Application Support/VoiceInk/settings.json`
+Before patching, I dropped the user's live `~/Library/Application Support/TypeUrVoice/settings.json`
 into a standalone Cargo project with a hand-stripped copy of the `d7ba29f`
 (May 11 build) `Settings` struct and confirmed `serde_json::from_str` returns
 `Ok(s)` with `s.onboarding_complete == true`. That ruled out a parse-error
@@ -1105,7 +1105,7 @@ file looks fine but app disagrees" reports.
 - `npm run tauri build` → `.app` produced; `bundle_dmg.sh` still fails
   (known issue, unrelated).
 - Killed the running May 11 process and `ditto`-replaced
-  `/Applications/VoiceInk.app` with the fresh build. Installed binary
+  `/Applications/TypeUrVoice.app` with the fresh build. Installed binary
   now dated May 23 07:11.
 
 
@@ -1131,7 +1131,7 @@ Six commits: model refresh, filler removal, GPU speed-up, live preview, built-in
 
 ### 3. Speed (`f15410e`)
 - whisper-rs 0.13 → **0.16** (API: `full_n_segments()` returns i32, `get_segment(i)?.to_str_lossy()`, `full_lang_id_from_state()` returns i32) with **`metal`** feature (macOS target dep) + `flash_attn`, explicit `n_threads` (≤8).
-- Benchmark (13.5 s Czech clip, turbo-q5, M4 Pro, warm): CPU 2.4 s → Metal 0.73 s. Run: `VOICEINK_BENCH_WAV=<16k mono wav> cargo test --release --lib bench_local -- --ignored --nocapture`.
+- Benchmark (13.5 s Czech clip, turbo-q5, M4 Pro, warm): CPU 2.4 s → Metal 0.73 s. Run: `TYPEURVOICE_BENCH_WAV=<16k mono wav> cargo test --release --lib bench_local -- --ignored --nocapture`.
 - `prewarm_local_model()` loads+verifies+runs 1 s of silence at launch, on engine/model change, after download. `audio::buffer::trim_silence()` (relative-energy, 250 ms padding, untouched for pure silence so dead-mic diagnostics still work). `AppState::capture_done` replaces the fixed 200 ms post-stop sleep. New-install default `turbo-q5`.
 - crash.log: `Timing: recorded Xms`, `Timing: transcribe/process/paste`, `Silence trim: a → b s`, `Prewarmed local model … in …`.
 
@@ -1141,8 +1141,8 @@ Six commits: model refresh, filler removal, GPU speed-up, live preview, built-in
 
 ### 5. Built-in LLMs (`5b0c5fc`)
 - `scripts/build-llama-server.sh` — llama.cpp **v0.6.0**, static, Metal embedded, `LLAMA_OPENSSL=OFF`, M1 baseline, fails if any non-system dylib is linked. Output `src-tauri/binaries/llama-server-<triple>` (git-ignored), bundled via `bundle.externalBin`, built automatically by `npm run dmg` (step 0).
-- Why a sidecar: whisper-rs and llama.cpp both vendor ggml (link collision); separate process = model crash can't kill VoiceInk.
-- `local_llm/models.rs`: qwen3.5-0.8b (Q8), **qwen3.5-2b** (default, Q4_K_M), qwen3.5-4b, gemma-4-e2b — Apache-2.0, HF LFS SHA-256 pinned (0.8b and 2b re-verified with `shasum`; 4b/gemma not downloaded locally — disk was full — rely on HF's published oid, still verified on download). Stored in `~/Library/Application Support/VoiceInk/llm-models/`.
+- Why a sidecar: whisper-rs and llama.cpp both vendor ggml (link collision); separate process = model crash can't kill TypeUrVoice.
+- `local_llm/models.rs`: qwen3.5-0.8b (Q8), **qwen3.5-2b** (default, Q4_K_M), qwen3.5-4b, gemma-4-e2b — Apache-2.0, HF LFS SHA-256 pinned (0.8b and 2b re-verified with `shasum`; 4b/gemma not downloaded locally — disk was full — rely on HF's published oid, still verified on download). Stored in `~/Library/Application Support/TypeUrVoice/llm-models/`.
 - `local_llm/server.rs::LlmServer` (managed as `Arc`): `ensure_running` (serialised by `load_lock`, reuses a live process, SHA-256 once per (key, mtime), free 127.0.0.1 port, `-c 4096 -ngl 99 -np 1 --no-webui`, waits for `/health` ≤90 s), `stop`, lock-free `stop_now` on `RunEvent::Exit`, PID file + `kill_orphan()` (only kills a process named llama-server), `run_idle_watcher` (20 s tick). Logs go to `llama-server.log` next to crash.log.
 - Settings: `builtin_llm_model`, `builtin_llm_auto` (true = load on hotkey press while speaking, unload after `builtin_llm_idle_minutes`, default 5; false = load at launch, keep until Quit). Raw mode never loads it.
 - Pipeline: `TextProcessor::BuiltIn` → `run_pipeline` calls `ensure_running` and puts the base URL into the per-recording settings clone's `text_processor_url`; `build_gpt_config` treats BuiltIn like Ollama, sets `GptConfig::disable_thinking` → `chat_template_kwargs.enable_thinking=false`.
@@ -1187,14 +1187,24 @@ Tuned on a labelled calibration recording. Findings that shaped it:
 
 ### Testing
 - Unit: `cargo test --lib knock`
-- Replay a recording: `VOICEINK_KNOCK_CSV=samples.csv VOICEINK_KNOCK_EVENTS=events.csv cargo test --release --lib knock_replay -- --ignored --nocapture`
-- Live, real sensor + typing veto: `VOICEINK_KNOCK_SECS=120 [VOICEINK_KNOCK_SENS=high] [VOICEINK_KNOCK_TRIPLE=1] cargo test --release --lib knock_live -- --ignored --nocapture`
+- Replay a recording: `TYPEURVOICE_KNOCK_CSV=samples.csv TYPEURVOICE_KNOCK_EVENTS=events.csv cargo test --release --lib knock_replay -- --ignored --nocapture`
+- Live, real sensor + typing veto: `TYPEURVOICE_KNOCK_SECS=120 [TYPEURVOICE_KNOCK_SENS=high] [TYPEURVOICE_KNOCK_TRIPLE=1] cargo test --release --lib knock_live -- --ignored --nocapture`
 
 ### crash.log lines
 `Knock: listening (2 knocks, Medium sensitivity)`, `Knock: listener stopped`, `Knock: 2 knocks over 170ms, peak 0.03g`, `Knock: starting recording` / `stopping recording` / `ignored while processing`, `Knock: trimmed last Nms of audio`, `Knock: accelerometer silent (N samples so far) — re-waking`, `Knock: listener failed: …`, `Knock: enabled, but this Mac has no accelerometer`.
 
 ### Follow-ups on the same branch (Oct 31)
-- **Paste** (`paste/clipboard.rs`): osascript `keystroke` replaced by a native CGEvent Cmd+V posted by VoiceInk after `AXIsProcessTrusted()` (all pointers null-checked; no prompt per paste). A blocked paste is now an error → crash.log `Paste: Cmd+V simulation failed: …` + notification "Text copied — press Cmd+V…". Launch logs `Launch: accessibility_trusted=<bool>`.
-- **Signing**: unsigned (ad-hoc) builds change signature every rebuild, so macOS silently drops the Accessibility grant — the recurring "paste stopped working". The repo default `tauri.conf.json` → `bundle.macOS.signingIdentity` is `"-"` (ad-hoc) so anyone can build. For your own builds, export `APPLE_SIGNING_IDENTITY="Apple Development: <you> (<TEAMID>)"` before `npm run tauri build` / `npm run dmg` so the signature (and the Accessibility grant) stays stable. `entitlements.plist` gained `com.apple.security.automation.apple-events` (hardened runtime). If trust is still false after granting: remove every VoiceInk entry in Accessibility and re-add `/Applications/VoiceInk.app` (stale entries from old builds share the bundle id).
+- **Paste** (`paste/clipboard.rs`): osascript `keystroke` replaced by a native CGEvent Cmd+V posted by TypeUrVoice after `AXIsProcessTrusted()` (all pointers null-checked; no prompt per paste). A blocked paste is now an error → crash.log `Paste: Cmd+V simulation failed: …` + notification "Text copied — press Cmd+V…". Launch logs `Launch: accessibility_trusted=<bool>`.
+- **Signing**: unsigned (ad-hoc) builds change signature every rebuild, so macOS silently drops the Accessibility grant — the recurring "paste stopped working". The repo default `tauri.conf.json` → `bundle.macOS.signingIdentity` is `"-"` (ad-hoc) so anyone can build. For your own builds, export `APPLE_SIGNING_IDENTITY="Apple Development: <you> (<TEAMID>)"` before `npm run tauri build` / `npm run dmg` so the signature (and the Accessibility grant) stays stable. `entitlements.plist` gained `com.apple.security.automation.apple-events` (hardened runtime). If trust is still false after granting: remove every TypeUrVoice entry in Accessibility and re-add `/Applications/TypeUrVoice.app` (stale entries from old builds share the bundle id).
 - **Overlay** is non-focusable (`focus/focusable: false` + `set_focusable(false)`); with live text on, the bubble returns after the paste for 3.5 s with the final text (`final-transcript` event). Live preview starts at 0.5 s of audio, 450 ms ticks; crash.log `Live preview: N update(s)`.
-- **Clean guard** (`processing/guard.rs`): word-aligns Clean output with the transcript; a swap to a dissimilar word (≥4 letters, accent-folded similarity < 0.6, not a dictionary term) is put back; >40% of words changed ⇒ raw transcript. crash.log `Clean guard: put back N word(s)…` / `…rejected (…) — using the transcript`. Replay on a history.db: `VOICEINK_HISTORY_DB=… cargo test --lib guard_history -- --ignored --nocapture`.
+- **Clean guard** (`processing/guard.rs`): word-aligns Clean output with the transcript; a swap to a dissimilar word (≥4 letters, accent-folded similarity < 0.6, not a dictionary term) is put back; >40% of words changed ⇒ raw transcript. crash.log `Clean guard: put back N word(s)…` / `…rejected (…) — using the transcript`. Replay on a history.db: `TYPEURVOICE_HISTORY_DB=… cargo test --lib guard_history -- --ignored --nocapture`.
+
+---
+
+## Rename to TypeUrVoice (November 2026, branch `nov-2026-model-refresh`)
+
+The app, crate, bundle and data folder are now **TypeUrVoice** (was VoiceInk). Historical sections above were search-and-replaced, so older entries say "TypeUrVoice" even where the build at the time was called VoiceInk.
+
+- `productName` TypeUrVoice, bundle id **`com.typeurvoice.app`** (was `com.voiceink.app`), Cargo crates `typeurvoice` / `typeurvoice_lib`, npm package `typeurvoice`, env vars `TYPEURVOICE_*`, log prefix `[TypeUrVoice]`, DMG `TypeUrVoice_<ver>_aarch64.dmg`.
+- **Data folder** `~/Library/Application Support/TypeUrVoice/`. `storage::settings::migrate_legacy_data_dir()` runs first thing in `run()` and renames `…/VoiceInk` → `…/TypeUrVoice` if only the old one exists (settings, keys.json, models, llm-models, history.db, logs all move). If both exist the old one is left alone. crash.log: `Data dir: moved … → …` / `Data dir: both … exist …` / `Data dir: could not move …`.
+- New bundle id ⇒ macOS treats it as a new app: Microphone, Accessibility and Notifications must be granted again, and "Start on login" must be re-enabled. Remove the old `/Applications/VoiceInk.app` (quit it first — it would otherwise keep writing to the old folder).

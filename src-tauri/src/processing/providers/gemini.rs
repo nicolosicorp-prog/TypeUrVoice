@@ -117,7 +117,7 @@ pub fn parse_response(raw_body: &str) -> Result<String> {
 
     if let Some(reason) = &candidate.finish_reason {
         if reason != "STOP" && reason != "MAX_TOKENS" {
-            eprintln!("[VoiceInk] Gemini finish_reason: {} — output may be incomplete", reason);
+            eprintln!("[TypeUrVoice] Gemini finish_reason: {} — output may be incomplete", reason);
         }
     }
 

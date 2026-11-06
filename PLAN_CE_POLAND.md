@@ -112,7 +112,7 @@ JSON keyed by feature area:
     "noSpeechDeadMic": "Microphone is silent. Grant Microphone permission in System Settings."
   },
   "notifications": {
-    "recordingFailed": "VoiceInk — recording failed",
+    "recordingFailed": "TypeUrVoice — recording failed",
     "transcribed": "Transcribed"
   }
 }
@@ -128,7 +128,7 @@ JSON keyed by feature area:
 
 The Rust side touches user-visible strings in a small number of places:
 
-- `tray.rs` — menu items ("Output Mode", "Quit VoiceInk", etc.)
+- `tray.rs` — menu items ("Output Mode", "Quit TypeUrVoice", etc.)
 - `lib.rs` — error notifications via `show_error_notification`
 - `transcription/*.rs` — error messages bubbled to the UI
 
@@ -505,7 +505,7 @@ pub enum TelemetryEvent {
 ```
 
 - Default: OFF.
-- Setting: General → "Help improve VoiceInk" toggle.
+- Setting: General → "Help improve TypeUrVoice" toggle.
 - Endpoint: self-hosted, no third party.
 - Never includes transcript content, file paths, or PII.
 - Privacy policy explicitly enumerates what's sent.
@@ -627,7 +627,7 @@ Phase 5 followup #1 from CLAUDE.md becomes blocking for launch:
 
 ## What Ships in v1 (Definition of Done)
 
-A user in Prague downloads VoiceInk, opens it, and:
+A user in Prague downloads TypeUrVoice, opens it, and:
 
 1. ✅ The entire UI is in Czech (autodetected from system locale)
 2. ✅ Onboarding offers to download Whisper Large (multilingual) or use a cloud key

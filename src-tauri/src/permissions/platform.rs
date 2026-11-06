@@ -29,7 +29,7 @@ pub mod macos {
                     "{}/Library/Application Support/com.apple.TCC/TCC.db",
                     std::env::var("HOME").unwrap_or_default()
                 ),
-                "SELECT auth_value FROM access WHERE service='kTCCServiceMicrophone' AND client='com.voiceink.app' LIMIT 1;"
+                "SELECT auth_value FROM access WHERE service='kTCCServiceMicrophone' AND client='com.typeurvoice.app' LIMIT 1;"
             ])
             .output();
 

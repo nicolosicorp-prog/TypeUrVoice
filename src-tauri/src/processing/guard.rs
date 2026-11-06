@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn dictionary_terms_may_replace_mishearings() {
-        assert_eq!(check_clean("otevři voice ink", "Otevři VoiceInk.", &["VoiceInk".into()]), Verdict::Ok);
+        assert_eq!(check_clean("otevři voice ink", "Otevři TypeUrVoice.", &["TypeUrVoice".into()]), Verdict::Ok);
     }
 
     #[test]
@@ -236,12 +236,12 @@ mod tests {
 #[cfg(test)]
 mod replay {
     /// Shows what the guard does to every Clean entry in a history.db:
-    /// VOICEINK_HISTORY_DB=~/Library/Application\ Support/VoiceInk/history.db \
+    /// TYPEURVOICE_HISTORY_DB=~/Library/Application\ Support/TypeUrVoice/history.db \
     ///   cargo test --lib guard_history -- --ignored --nocapture
     #[test]
     #[ignore]
     fn guard_history() {
-        let Ok(path) = std::env::var("VOICEINK_HISTORY_DB") else { return };
+        let Ok(path) = std::env::var("TYPEURVOICE_HISTORY_DB") else { return };
         let conn = rusqlite::Connection::open(path).unwrap();
         let mut stmt = conn
             .prepare("SELECT raw_text, processed_text FROM transcriptions WHERE mode = 'clean' ORDER BY id")

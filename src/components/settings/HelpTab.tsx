@@ -8,7 +8,7 @@ export function HelpTab() {
       {/* ── Quick start ── */}
       <Section title="Quick Start">
         <Para>
-          VoiceInk lives in your menu bar. Press your shortcut, speak, release — your
+          TypeUrVoice lives in your menu bar. Press your shortcut, speak, release — your
           words appear wherever your cursor is.
         </Para>
         <Steps items={[
@@ -43,7 +43,7 @@ export function HelpTab() {
         </Field>
         <Field name="Microphone">
           Pick a specific input device or leave on <B>System default</B>. If the device
-          you saved gets unplugged, VoiceInk will quietly fall back to the system
+          you saved gets unplugged, TypeUrVoice will quietly fall back to the system
           default and warn you here.
         </Field>
         <Field name="Recording mode — Hold to Record">
@@ -72,7 +72,7 @@ export function HelpTab() {
           (MacBook Air/Pro with Apple Silicon); desktop Macs and Windows don't have one.
         </Field>
         <Field name="Start on login">
-          Launch VoiceInk automatically when you log in to your Mac.
+          Launch TypeUrVoice automatically when you log in to your Mac.
         </Field>
         <Field name="Check for updates">
           Looks for a newer release. If updates are not yet active for your build,
@@ -92,7 +92,7 @@ export function HelpTab() {
       {/* ── Engine tab ── */}
       <Section title="Engine Tab — Pick Transcription + Text Processing Independently">
         <Para>
-          VoiceInk has two independent stages: <B>Transcription</B> (speech → raw
+          TypeUrVoice has two independent stages: <B>Transcription</B> (speech → raw
           text) and <B>Text Processing</B> (cleanup, polish, translation, summary).
           You pick a backend for each. The example modes below are common
           combinations — but every transcription engine works with every text
@@ -132,7 +132,7 @@ export function HelpTab() {
           bullets={[
             'Both transcription and cleanup run on your Mac\'s GPU.',
             'Pick Built-in (on this Mac) under Text Processing and download a small model (0.8–3 GB).',
-            'No Ollama or LM Studio needed — VoiceInk runs the model itself.',
+            'No Ollama or LM Studio needed — TypeUrVoice runs the model itself.',
             'Ollama and LM Studio still work if you prefer your own setup.',
           ]}
           when="Pick this for maximum privacy or when offline. Set Output mode to Raw to skip the LLM step entirely."
@@ -150,7 +150,7 @@ export function HelpTab() {
         <Field name="Transcription — Local (Whisper)">
           Runs Whisper on your Mac via whisper.cpp, accelerated by the Apple
           Silicon GPU (Metal). Fully offline once a model is downloaded. The model
-          is loaded in the background when VoiceInk starts, so even the first
+          is loaded in the background when TypeUrVoice starts, so even the first
           recording is fast. Multilingual Q5 models (small/medium/large/turbo) handle
           Czech, Slovak, English and 90+ other languages. The English-only models
           (<B>tiny-en</B>, <B>base-en</B>) are smaller and faster but don't work for
@@ -171,7 +171,7 @@ export function HelpTab() {
           Translate / Summarize. Pick one from the dropdown:
         </Para>
         <Field name="Built-in (on this Mac)">
-          VoiceInk runs a small AI model itself — no Ollama, LM Studio, account or
+          TypeUrVoice runs a small AI model itself — no Ollama, LM Studio, account or
           API key. Download one of: <B>Qwen3.5 2B</B> (recommended, fast,
           multilingual), <B>Qwen3.5 0.8B</B> (tiniest), <B>Qwen3.5 4B</B> (best
           quality of the small ones), <B>Gemma 4 E2B</B> (strong on Czech/Slovak), or —
@@ -189,13 +189,13 @@ export function HelpTab() {
         <Field name="OpenAI">
           <B>GPT-6 Luna</B> (default) is OpenAI's most efficient model for quick,
           high-volume tasks like cleanup. GPT-6.1 Terra (fast), GPT-6.1 Sol
-          (balanced) and GPT-6 Astra (flagship) are also listed. VoiceInk asks reasoning models for minimal thinking so
+          (balanced) and GPT-6 Astra (flagship) are also listed. TypeUrVoice asks reasoning models for minimal thinking so
           cleanup stays fast. Get a key at platform.openai.com.
         </Field>
         <Field name="Anthropic Claude">
           <B>Claude Haiku 5.5</B> (default), Sonnet 5.5, Opus 5.5 and Fable 5.1
           (the most capable, and the slowest). Excellent at
-          following instructions and preserving the speaker's voice. VoiceInk uses
+          following instructions and preserving the speaker's voice. TypeUrVoice uses
           low effort for fast cleanup. Get a key at console.anthropic.com.
         </Field>
         <Field name="Google Gemini">
@@ -229,7 +229,7 @@ export function HelpTab() {
         {/* Keys + models */}
         <Field name="API keys">
           All keys are stored locally on your Mac in
-          <B> ~/Library/Application Support/VoiceInk/keys.json</B> with owner-only
+          <B> ~/Library/Application Support/TypeUrVoice/keys.json</B> with owner-only
           file permissions (chmod 0600). Each provider has its own slot. Keys are
           never sent anywhere except the corresponding provider. Use
           <B> Test connection</B> next to each key field to validate it before saving.
@@ -239,7 +239,7 @@ export function HelpTab() {
           <B> Refresh from provider</B> to fetch the live model list from the
           provider's <Code>/models</Code> endpoint. The result is cached locally for
           24 hours, so you don't hammer the provider on every settings open. New
-          models from the provider show up without a VoiceInk update.
+          models from the provider show up without a TypeUrVoice update.
         </Field>
         <Field name="OpenRouter / Together / Custom">
           These three have catalogues too large to enumerate (hundreds of models),
@@ -287,7 +287,7 @@ export function HelpTab() {
           no commentary) are appended automatically. Empty prompt falls back to Raw.
         </Field>
         <Field name="Auto-paste">
-          When ON, VoiceInk simulates Cmd+V into whichever app has focus right after
+          When ON, TypeUrVoice simulates Cmd+V into whichever app has focus right after
           transcription. When OFF, the text is still copied to your clipboard — paste
           manually. Auto-paste needs Accessibility permission.
         </Field>
@@ -380,15 +380,15 @@ export function HelpTab() {
       {/* ── Troubleshooting ── */}
       <Section title="Troubleshooting">
         <Field name="Recording produces no text">
-          Most often the microphone is muted, dead, or VoiceInk doesn't have
+          Most often the microphone is muted, dead, or TypeUrVoice doesn't have
           Microphone permission. Open <B>System Settings → Privacy &amp; Security →
-          Microphone</B> and confirm VoiceInk is enabled. Open <B>Show crash.log</B>
+          Microphone</B> and confirm TypeUrVoice is enabled. Open <B>Show crash.log</B>
           in General — a line like <Code>peak=0.0003</Code> means the mic captured
           silence.
         </Field>
         <Field name="Text doesn't paste">
           Auto-paste requires Accessibility permission. Open <B>System Settings →
-          Privacy &amp; Security → Accessibility</B>, find VoiceInk, and toggle it
+          Privacy &amp; Security → Accessibility</B>, find TypeUrVoice, and toggle it
           on. The clipboard always gets the text even if pasting fails — Cmd+V
           manually.
         </Field>
@@ -421,14 +421,14 @@ export function HelpTab() {
           crash.log.
         </Field>
         <Field name="LLM connection failed / 429 errors">
-          VoiceInk retries once on a 2-second backoff for transient errors (429 rate
+          TypeUrVoice retries once on a 2-second backoff for transient errors (429 rate
           limit, 5xx). If you keep hitting them, you're either rate-limited (wait a
           minute) or the provider's down (try a different one). Auth errors (401/403)
           don't retry — re-paste your key.
         </Field>
         <Field name="My provider released a new model — where is it?">
           Open Engine → Text Processing → Model dropdown → click <B>Refresh from
-          provider</B>. VoiceInk fetches the live list from the provider's
+          provider</B>. TypeUrVoice fetches the live list from the provider's
           <Code> /models</Code> endpoint and caches it for 24h.
         </Field>
       </Section>
@@ -440,10 +440,10 @@ export function HelpTab() {
           'API keys live in keys.json with chmod 0600 (owner-only). One slot per provider — switching providers does not leak any other key.',
           'In Cloud transcription mode, audio is sent to your chosen Whisper host (OpenAI or Groq). In Local mode, audio never leaves your machine.',
           'Text processing sends only transcripts — never audio — and only to the single provider you selected (OpenAI, Anthropic, Gemini, an OpenAI-compatible host, Ollama, or LM Studio).',
-          'Built-in text processing runs entirely on your Mac: the model server listens only on 127.0.0.1 (not reachable from your network) and is stopped when VoiceInk quits.',
+          'Built-in text processing runs entirely on your Mac: the model server listens only on 127.0.0.1 (not reachable from your network) and is stopped when TypeUrVoice quits.',
           'crash.log does not include transcripts unless Verbose diagnostics is ON.',
           'The 24-hour live model cache is stored locally (model_cache.json). It contains only model identifiers, no transcripts.',
-          'VoiceInk has no analytics, telemetry, or accounts.',
+          'TypeUrVoice has no analytics, telemetry, or accounts.',
         ]} />
       </Section>
     </div>

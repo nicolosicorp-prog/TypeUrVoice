@@ -49,7 +49,7 @@
       "notConnectedSuffix": "(not connected)",
       "loadingDescription": "Loading available devices…",
       "description": "Pick a specific microphone or use the system default.",
-      "missingWarning": "The saved device is not currently connected. VoiceInk will fall back to the system default."
+      "missingWarning": "The saved device is not currently connected. TypeUrVoice will fall back to the system default."
     },
     "recording": {
       "section": "Recording",
@@ -62,7 +62,7 @@
     "system": {
       "section": "System",
       "startOnLogin": "Start on login",
-      "startOnLoginDescription": "Launch VoiceInk when you log in",
+      "startOnLoginDescription": "Launch TypeUrVoice when you log in",
       "verboseDiagnostics": "Verbose diagnostics",
       "verboseDiagnosticsDescription": "Include transcript previews in crash.log for debugging. Off by default to protect privacy.",
       "showCrashLog": "Show crash.log",
@@ -90,7 +90,7 @@
     "whisperKey": {
       "groqSection": "Groq API Key (for Whisper transcription)",
       "openaiSection": "OpenAI API Key (for Whisper transcription)",
-      "description": "Stored locally on your device with owner-only permissions — never sent to VoiceInk servers."
+      "description": "Stored locally on your device with owner-only permissions — never sent to TypeUrVoice servers."
     },
     "localModels": {
       "section": "Local Models",
@@ -107,7 +107,7 @@
       "serviceLabel": "Service",
       "customUrlLabel": "Custom endpoint base URL",
       "customUrlPlaceholder": "https://example.com/v1",
-      "customUrlDescription": "VoiceInk appends /chat/completions automatically.",
+      "customUrlDescription": "TypeUrVoice appends /chat/completions automatically.",
       "serverUrlLabel": "Server URL",
       "modelNameLabel": "Model name",
       "ollamaHint": "Make sure Ollama is running: ollama serve",
@@ -223,7 +223,7 @@
   "dictionary": {
     "heading": "Custom Words",
     "description": "Add technical terms, names, and brand words to improve transcription accuracy.",
-    "inputPlaceholder": "e.g. Kubernetes, VoiceInk",
+    "inputPlaceholder": "e.g. Kubernetes, TypeUrVoice",
     "emptyTitle": "Your dictionary is empty.",
     "emptyHint": "Add custom words to improve transcription accuracy."
   },
@@ -250,15 +250,15 @@
 
   "onboarding": {
     "welcome": {
-      "title": "Welcome to VoiceInk",
-      "description": "Speak naturally, get perfect text. Press your shortcut, say what you want to write, and VoiceInk handles the rest.",
+      "title": "Welcome to TypeUrVoice",
+      "description": "Speak naturally, get perfect text. Press your shortcut, say what you want to write, and TypeUrVoice handles the rest.",
       "cta": "Get Started"
     },
     "permissions": {
       "title": "Microphone access",
-      "descriptionPrefix": "VoiceInk needs microphone access to capture your speech.",
+      "descriptionPrefix": "TypeUrVoice needs microphone access to capture your speech.",
       "privacyLocal": "Your audio is transcribed entirely on your device — never sent to any server.",
-      "privacyCloud": "Your audio is sent to your API provider for transcription — never stored by VoiceInk.",
+      "privacyCloud": "Your audio is sent to your API provider for transcription — never stored by TypeUrVoice.",
       "grant": "Grant Microphone Access",
       "granted": "Granted",
       "alsoEnableAccessibility": "Also enable accessibility (for auto-paste)",
@@ -272,7 +272,7 @@
     },
     "apiKey": {
       "title": "Add your OpenAI API key",
-      "description": "VoiceInk uses your own key — no subscription, no data stored. Get your key at platform.openai.com.",
+      "description": "TypeUrVoice uses your own key — no subscription, no data stored. Get your key at platform.openai.com.",
       "placeholder": "sk-...",
       "saved": "API key saved",
       "invalid": "Invalid key. Check and try again.",
@@ -281,8 +281,8 @@
     },
     "done": {
       "title": "You're all set",
-      "description": "Press your shortcut in any app to start recording. VoiceInk runs quietly in the menu bar.",
-      "cta": "Start Using VoiceInk"
+      "description": "Press your shortcut in any app to start recording. TypeUrVoice runs quietly in the menu bar.",
+      "cta": "Start Using TypeUrVoice"
     }
   },
 
@@ -295,7 +295,7 @@
   "help": {
     "quickStart": {
       "heading": "Quick Start",
-      "intro": "VoiceInk lives in your menu bar. Press your shortcut, speak, release — your words appear wherever your cursor is.",
+      "intro": "TypeUrVoice lives in your menu bar. Press your shortcut, speak, release — your words appear wherever your cursor is.",
       "steps": [
         "Pick a Transcription engine in the Engine tab (Cloud or Local).",
         "If Cloud: choose your Whisper host (OpenAI or Groq) and paste that provider's API key.",
@@ -319,7 +319,7 @@
         },
         "microphone": {
           "name": "Microphone",
-          "body": "Pick a specific input device or leave on System default. If the device you saved gets unplugged, VoiceInk will quietly fall back to the system default and warn you here."
+          "body": "Pick a specific input device or leave on System default. If the device you saved gets unplugged, TypeUrVoice will quietly fall back to the system default and warn you here."
         },
         "holdMode": {
           "name": "Recording mode — Hold to Record",
@@ -331,7 +331,7 @@
         },
         "startOnLogin": {
           "name": "Start on login",
-          "body": "Launch VoiceInk automatically when you log in to your Mac."
+          "body": "Launch TypeUrVoice automatically when you log in to your Mac."
         },
         "checkForUpdates": {
           "name": "Check for updates",
@@ -349,7 +349,7 @@
     },
     "engineTab": {
       "heading": "Engine Tab — Pick Transcription + Text Processing Independently",
-      "intro": "VoiceInk has two independent stages: Transcription (speech → raw text) and Text Processing (cleanup, polish, translation, summary). You pick a backend for each. The example modes below are common combinations — but every transcription engine works with every text processor, so mix and match freely.",
+      "intro": "TypeUrVoice has two independent stages: Transcription (speech → raw text) and Text Processing (cleanup, polish, translation, summary). You pick a backend for each. The example modes below are common combinations — but every transcription engine works with every text processor, so mix and match freely.",
       "modes": {
         "fullyOnline": {
           "tag": "Fully Online",
@@ -427,11 +427,11 @@
         },
         "apiKeys": {
           "name": "API keys",
-          "body": "All keys are stored locally on your Mac in ~/Library/Application Support/VoiceInk/keys.json with owner-only file permissions (chmod 0600). Each provider has its own slot. Keys are never sent anywhere except the corresponding provider. Use Test connection next to each key field to validate it before saving."
+          "body": "All keys are stored locally on your Mac in ~/Library/Application Support/TypeUrVoice/keys.json with owner-only file permissions (chmod 0600). Each provider has its own slot. Keys are never sent anywhere except the corresponding provider. Use Test connection next to each key field to validate it before saving."
         },
         "modelDropdown": {
           "name": "Model dropdown + Refresh from provider",
-          "body": "The Model dropdown shows a hand-curated default list per provider. Click Refresh from provider to fetch the live model list from the provider's /models endpoint. The result is cached locally for 24 hours, so you don't hammer the provider on every settings open. New models from the provider show up without a VoiceInk update."
+          "body": "The Model dropdown shows a hand-curated default list per provider. Click Refresh from provider to fetch the live model list from the provider's /models endpoint. The result is cached locally for 24 hours, so you don't hammer the provider on every settings open. New models from the provider show up without a TypeUrVoice update."
         },
         "openrouterTogetherCustom": {
           "name": "OpenRouter / Together / Custom",
@@ -460,7 +460,7 @@
         },
         "autoPaste": {
           "name": "Auto-paste",
-          "body": "When ON, VoiceInk simulates Cmd+V into whichever app has focus right after transcription. When OFF, the text is still copied to your clipboard — paste manually. Auto-paste needs Accessibility permission."
+          "body": "When ON, TypeUrVoice simulates Cmd+V into whichever app has focus right after transcription. When OFF, the text is still copied to your clipboard — paste manually. Auto-paste needs Accessibility permission."
         },
         "showNotification": {
           "name": "Show notification",
@@ -547,11 +547,11 @@
       "fields": {
         "noText": {
           "name": "Recording produces no text",
-          "body": "Most often the microphone is muted, dead, or VoiceInk doesn't have Microphone permission. Open System Settings → Privacy & Security → Microphone and confirm VoiceInk is enabled. Open Show crash.log in General — a line like `peak=0.0003` means the mic captured silence."
+          "body": "Most often the microphone is muted, dead, or TypeUrVoice doesn't have Microphone permission. Open System Settings → Privacy & Security → Microphone and confirm TypeUrVoice is enabled. Open Show crash.log in General — a line like `peak=0.0003` means the mic captured silence."
         },
         "noPaste": {
           "name": "Text doesn't paste",
-          "body": "Auto-paste requires Accessibility permission. Open System Settings → Privacy & Security → Accessibility, find VoiceInk, and toggle it on. The clipboard always gets the text even if pasting fails — Cmd+V manually."
+          "body": "Auto-paste requires Accessibility permission. Open System Settings → Privacy & Security → Accessibility, find TypeUrVoice, and toggle it on. The clipboard always gets the text even if pasting fails — Cmd+V manually."
         },
         "wrongLanguage": {
           "name": "Wrong language detected",
@@ -567,11 +567,11 @@
         },
         "llmFailed": {
           "name": "LLM connection failed / 429 errors",
-          "body": "VoiceInk retries once on a 2-second backoff for transient errors (429 rate limit, 5xx). If you keep hitting them, you're either rate-limited (wait a minute) or the provider's down (try a different one). Auth errors (401/403) don't retry — re-paste your key."
+          "body": "TypeUrVoice retries once on a 2-second backoff for transient errors (429 rate limit, 5xx). If you keep hitting them, you're either rate-limited (wait a minute) or the provider's down (try a different one). Auth errors (401/403) don't retry — re-paste your key."
         },
         "newModel": {
           "name": "My provider released a new model — where is it?",
-          "body": "Open Engine → Text Processing → Model dropdown → click Refresh from provider. VoiceInk fetches the live list from the provider's /models endpoint and caches it for 24h."
+          "body": "Open Engine → Text Processing → Model dropdown → click Refresh from provider. TypeUrVoice fetches the live list from the provider's /models endpoint and caches it for 24h."
         }
       }
     },
@@ -584,14 +584,14 @@
         "Text processing sends only transcripts — never audio — and only to the single provider you selected (OpenAI, Anthropic, Gemini, an OpenAI-compatible host, Ollama, or LM Studio).",
         "crash.log does not include transcripts unless Verbose diagnostics is ON.",
         "The 24-hour live model cache is stored locally (model_cache.json). It contains only model identifiers, no transcripts.",
-        "VoiceInk has no analytics, telemetry, or accounts."
+        "TypeUrVoice has no analytics, telemetry, or accounts."
       ]
     }
   },
 
   "errors": {
     "noAudio": "No audio recorded. Hold the shortcut while speaking.",
-    "noSpeechDeadMic": "Microphone captured silence (rms ≈ 0). Grant Microphone permission in System Settings → Privacy & Security → Microphone → VoiceInk, or check your input device.",
+    "noSpeechDeadMic": "Microphone captured silence (rms ≈ 0). Grant Microphone permission in System Settings → Privacy & Security → Microphone → TypeUrVoice, or check your input device.",
     "noSpeechQuietMic": "No clear speech captured. Your mic may be too quiet or muted — try speaking closer to it, or check Source Language in Settings.",
     "noApiKeyOpenAi": "No API key configured. Add your OpenAI key in Settings → Engine.",
     "noApiKeyVendor": "No API key configured. Add your {{vendor}} key in Settings → Engine.",
@@ -615,13 +615,13 @@
   },
 
   "notifications": {
-    "successTitle": "VoiceInk",
-    "errorTitle": "VoiceInk — recording failed"
+    "successTitle": "TypeUrVoice",
+    "errorTitle": "TypeUrVoice — recording failed"
   },
 
   "tray": {
-    "title": "VoiceInk",
-    "tooltip": "VoiceInk",
+    "title": "TypeUrVoice",
+    "tooltip": "TypeUrVoice",
     "outputMode": "Output Mode",
     "modeRaw": "Raw",
     "modeClean": "Clean",
@@ -630,6 +630,6 @@
     "manageProfiles": "Manage profiles…",
     "recentActivity": "Recent Activity",
     "settings": "Settings…",
-    "quit": "Quit VoiceInk"
+    "quit": "Quit TypeUrVoice"
   }
 }

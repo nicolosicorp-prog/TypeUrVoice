@@ -99,9 +99,9 @@ fn request_accessibility_if_needed() {
         let trusted = AXIsProcessTrustedWithOptions(dict);
         CFRelease(dict);
         if trusted {
-            eprintln!("[VoiceInk] Accessibility: granted");
+            eprintln!("[TypeUrVoice] Accessibility: granted");
         } else {
-            eprintln!("[VoiceInk] Accessibility: not granted — macOS prompt shown");
+            eprintln!("[TypeUrVoice] Accessibility: not granted — macOS prompt shown");
         }
     }
 }
@@ -266,7 +266,7 @@ async fn test_text_processor(
     let api_key = match storage::api_keys::get("openai") {
         Ok(k) => k,
         Err(e) => {
-            eprintln!("[VoiceInk] API key store error: {}", e);
+            eprintln!("[TypeUrVoice] API key store error: {}", e);
             None
         }
     };
@@ -560,7 +560,7 @@ fn delete_user_occupation_profile(
 
 #[tauri::command]
 async fn show_crash_log() -> Result<(), String> {
-    let path = storage::settings::voiceink_data_dir()
+    let path = storage::settings::typeurvoice_data_dir()
         .map_err(|e| format!("Could not resolve data dir: {}", e))?
         .join("crash.log");
 
@@ -597,7 +597,7 @@ fn start_audio_capture(app: &AppHandle, language: Option<String>) {
     // the new capture buffer.
     let acquired = with_state(app, |s| match s.recording_state {
         RecordingState::Recording | RecordingState::Processing => {
-            eprintln!("[VoiceInk] Ignoring start — already {:?}", s.recording_state);
+            eprintln!("[TypeUrVoice] Ignoring start — already {:?}", s.recording_state);
             None
         }
         _ => {
@@ -619,7 +619,7 @@ fn start_audio_capture(app: &AppHandle, language: Option<String>) {
     });
     let Some((samples, stop_flag, sample_rate_arc, capture_done, preview_busy)) = acquired else { return; };
 
-    eprintln!("[VoiceInk] Recording started (language: {:?})", language);
+    eprintln!("[TypeUrVoice] Recording started (language: {:?})", language);
 
     let _ = app.emit("recording-state", "recording");
     show_overlay(app);
@@ -660,7 +660,7 @@ fn start_audio_capture(app: &AppHandle, language: Option<String>) {
     // Spawn dedicated thread for cpal (Stream is !Send on macOS)
     std::thread::spawn(move || {
         if let Err(e) = audio::capture::record_until_stopped(samples, sample_rate_arc, stop_flag, input_device) {
-            eprintln!("[VoiceInk] Recording error: {}", e);
+            eprintln!("[TypeUrVoice] Recording error: {}", e);
         }
         capture_done.store(true, Ordering::Release);
     });
@@ -698,7 +698,7 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
     let mut settings = with_settings(app, |s| s.clone());
     // Override source_language if a shortcut-specific language was set
     if let Some(lang) = active_language {
-        eprintln!("[VoiceInk] Using shortcut language override: {}", lang);
+        eprintln!("[TypeUrVoice] Using shortcut language override: {}", lang);
         settings.source_language = lang;
     }
     // Whisper key — slot depends on which cloud Whisper provider is active.
@@ -709,7 +709,7 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
     let api_key = match storage::api_keys::get(whisper_key_slot) {
         Ok(k) => k,
         Err(e) => {
-            eprintln!("[VoiceInk] API key store error: {}", e);
+            eprintln!("[TypeUrVoice] API key store error: {}", e);
             None
         }
     };
@@ -755,7 +755,7 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
             log_to_file(&format!("Knock: trimmed last {}ms of audio", tail.as_millis()));
         }
 
-        eprintln!("[VoiceInk] Pipeline: {} samples, {}Hz", samples.len(), sample_rate);
+        eprintln!("[TypeUrVoice] Pipeline: {} samples, {}Hz", samples.len(), sample_rate);
 
         // Outer pipeline timeout — sized to accommodate transcription + up to three
         // LLM calls (cleanup, translation, summary) each bounded to 45s below.
@@ -768,12 +768,12 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
         match result {
             Ok(Ok(_)) => {
                 log_to_file("Pipeline completed successfully");
-                eprintln!("[VoiceInk] Pipeline completed successfully");
+                eprintln!("[TypeUrVoice] Pipeline completed successfully");
             }
             Ok(Err(e)) => {
                 let msg = format!("Pipeline error: {}", e);
                 log_to_file(&msg);
-                eprintln!("[VoiceInk] {}", msg);
+                eprintln!("[TypeUrVoice] {}", msg);
                 let _ = app_clone.emit("recording-error", e.to_string());
                 let _ = app_clone.emit("recording-state", "error");
                 show_error_notification(&app_clone, &e.to_string());
@@ -783,7 +783,7 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
             }
             Err(_) => {
                 log_to_file("Pipeline timed out after 360s!");
-                eprintln!("[VoiceInk] Pipeline timed out after 360s!");
+                eprintln!("[TypeUrVoice] Pipeline timed out after 360s!");
                 let msg = "Pipeline timed out. Try a shorter recording or smaller model.";
                 let _ = app_clone.emit("recording-error", msg);
                 let _ = app_clone.emit("recording-state", "error");
@@ -804,7 +804,7 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
         with_state(&app_clone, |s| {
             if matches!(s.recording_state, RecordingState::Done | RecordingState::Error(_)) {
                 s.recording_state = RecordingState::Idle;
-                eprintln!("[VoiceInk] State reset to Idle — ready for next recording");
+                eprintln!("[TypeUrVoice] State reset to Idle — ready for next recording");
             }
         });
     });
@@ -833,7 +833,7 @@ async fn run_pipeline(
         "Audio captured: {:.1}s, {} samples @ {}Hz, rms={:.4}, peak={:.4}",
         duration_secs, samples.len(), sample_rate, rms, peak
     ));
-    eprintln!("[VoiceInk] Audio: {:.1}s rms={:.4} peak={:.4}", duration_secs, rms, peak);
+    eprintln!("[TypeUrVoice] Audio: {:.1}s rms={:.4} peak={:.4}", duration_secs, rms, peak);
 
     // Trim leading/trailing silence (after the level check above, so the
     // dead-mic diagnostics still see the full capture).
@@ -851,7 +851,7 @@ async fn run_pipeline(
     // ── Step 1: Transcribe ──────────────────────────────────────────────────
     let _ = app.emit("pipeline-step", "transcribing");
     log_to_file(&format!("Step 1: Transcribing ({:?} engine, {:.1}s audio)", settings.engine, duration_secs));
-    eprintln!("[VoiceInk] Step 1: Transcribing ({:?} engine)...", settings.engine);
+    eprintln!("[TypeUrVoice] Step 1: Transcribing ({:?} engine)...", settings.engine);
 
     let transcript = transcription::transcribe(
         wav_bytes,
@@ -875,7 +875,7 @@ async fn run_pipeline(
             transcript.language, transcript.text.len()
         ));
     }
-    eprintln!("[VoiceInk] Transcription: lang={}, text={:?}",
+    eprintln!("[TypeUrVoice] Transcription: lang={}, text={:?}",
         transcript.language,
         safe_truncate(&transcript.text, 60),
     );
@@ -885,7 +885,7 @@ async fn run_pipeline(
         // rms < 0.001 is effectively pure silence — almost always a permission
         // issue or wrong input device.
         let msg = if peak < 0.001 {
-            "Microphone captured silence (rms ≈ 0). Grant Microphone permission in System Settings → Privacy & Security → Microphone → VoiceInk, or check your input device."
+            "Microphone captured silence (rms ≈ 0). Grant Microphone permission in System Settings → Privacy & Security → Microphone → TypeUrVoice, or check your input device."
         } else {
             "No clear speech captured. Your mic may be too quiet or muted — try speaking closer to it, or check Source Language in Settings."
         };
@@ -898,7 +898,7 @@ async fn run_pipeline(
     let needs_processing = needs_text_processing(&settings);
 
     let processed = if !needs_processing {
-        eprintln!("[VoiceInk] Step 2: Raw mode — skipping processing");
+        eprintln!("[TypeUrVoice] Step 2: Raw mode — skipping processing");
         processing::ProcessingResult {
             processed_text: transcript.text.clone(),
             translated_text: None,
@@ -912,7 +912,7 @@ async fn run_pipeline(
                 "No API key configured. Add your OpenAI key in Settings → Engine."
             ));
         }
-        eprintln!("[VoiceInk] Step 2: Processing ({:?} mode, {:?} processor)...",
+        eprintln!("[TypeUrVoice] Step 2: Processing ({:?} mode, {:?} processor)...",
             settings.output_mode, settings.text_processor);
 
         // Built-in LLM: usually already warm (started on hotkey press). The
@@ -940,7 +940,7 @@ async fn run_pipeline(
         } else {
             transcript.language.clone()
         };
-        eprintln!("[VoiceInk] Cleanup language: {} (whisper detected: {}, source setting: {})",
+        eprintln!("[TypeUrVoice] Cleanup language: {} (whisper detected: {}, source setting: {})",
             cleanup_language, transcript.language, settings.source_language);
 
         let result = processing::process(
@@ -957,11 +957,11 @@ async fn run_pipeline(
     };
 
     let process_ms = t_process.elapsed().as_millis();
-    eprintln!("[VoiceInk] Final text: {:?}", safe_truncate(&processed.final_text, 60));
+    eprintln!("[TypeUrVoice] Final text: {:?}", safe_truncate(&processed.final_text, 60));
 
     // ── Step 3: Save to history ─────────────────────────────────────────────
     if let Err(e) = save_to_history(&transcript, &processed, &settings, duration_secs) {
-        eprintln!("[VoiceInk] History save failed (non-fatal): {}", e);
+        eprintln!("[TypeUrVoice] History save failed (non-fatal): {}", e);
     }
 
     // ── Step 3.5: Hide overlay BEFORE paste so focus returns to the user's app ──
@@ -978,7 +978,7 @@ async fn run_pipeline(
     let auto_paste = settings.auto_paste;
 
     log_to_file(&format!("Step 4: {} text ({} chars)", if auto_paste { "Pasting" } else { "Copying" }, final_text.len()));
-    eprintln!("[VoiceInk] Step 4: {} text ({} chars)",
+    eprintln!("[TypeUrVoice] Step 4: {} text ({} chars)",
         if auto_paste { "Pasting" } else { "Copying" }, final_text.len());
 
     // Paste on a blocking thread (enigo uses system APIs).
@@ -996,24 +996,24 @@ async fn run_pipeline(
     match paste_result {
         Ok(Ok(Ok(()))) => {
             log_to_file("Step 4: paste/copy succeeded");
-            eprintln!("[VoiceInk] Paste/copy succeeded");
+            eprintln!("[TypeUrVoice] Paste/copy succeeded");
         }
         Ok(Ok(Err(e))) => {
             let msg = e.to_string();
             log_to_file(&msg);
-            eprintln!("[VoiceInk] {}", msg);
+            eprintln!("[TypeUrVoice] {}", msg);
             show_error_notification(app, &msg);
         }
         Ok(Err(_panic)) => {
             let msg = "Paste step panicked — text may not be on clipboard.";
             log_to_file(msg);
-            eprintln!("[VoiceInk] {}", msg);
+            eprintln!("[TypeUrVoice] {}", msg);
             show_error_notification(app, msg);
         }
         Err(e) => {
             let msg = format!("Paste task failed: {}", e);
             log_to_file(&msg);
-            eprintln!("[VoiceInk] {}", msg);
+            eprintln!("[TypeUrVoice] {}", msg);
             show_error_notification(app, &msg);
         }
     }
@@ -1045,7 +1045,7 @@ async fn run_pipeline(
         show_notification(app, &processed.final_text);
     }
 
-    eprintln!("[VoiceInk] Pipeline complete");
+    eprintln!("[TypeUrVoice] Pipeline complete");
     Ok(())
 }
 
@@ -1074,7 +1074,7 @@ fn show_notification(app: &AppHandle, text: &str) {
     let preview = safe_truncate(text, 80);
     let _ = app.notification()
         .builder()
-        .title("VoiceInk")
+        .title("TypeUrVoice")
         .body(&preview)
         .show();
 }
@@ -1086,7 +1086,7 @@ fn show_error_notification(app: &AppHandle, msg: &str) {
     use tauri_plugin_notification::NotificationExt;
     let _ = app.notification()
         .builder()
-        .title("VoiceInk — recording failed")
+        .title("TypeUrVoice — recording failed")
         .body(&safe_truncate(msg, 140))
         .show();
 }
@@ -1168,7 +1168,7 @@ fn register_cmd_q_intercept(app: &AppHandle) {
                     if let Some(w) = app_handle.get_webview_window("onboarding") {
                         let _ = w.hide();
                     }
-                    eprintln!("[VoiceInk] Cmd+Q intercepted — windows hidden, app stays in tray");
+                    eprintln!("[TypeUrVoice] Cmd+Q intercepted — windows hidden, app stays in tray");
                 }
             });
         }
@@ -1217,9 +1217,9 @@ fn register_shortcut(app: &AppHandle, shortcut: &str, language: Option<String>) 
         let _ = app.global_shortcut().on_shortcut(sc, move |_app, _sc, event| {
             on_shortcut(&app_clone, event.state(), lang.clone());
         });
-        eprintln!("[VoiceInk] Shortcut registered: {} (lang: {:?})", shortcut, language);
+        eprintln!("[TypeUrVoice] Shortcut registered: {} (lang: {:?})", shortcut, language);
     } else {
-        eprintln!("[VoiceInk] Failed to parse shortcut: {}", shortcut);
+        eprintln!("[TypeUrVoice] Failed to parse shortcut: {}", shortcut);
     }
 }
 
@@ -1295,7 +1295,7 @@ fn on_knock(app: &AppHandle, since_first_knock: std::time::Duration) {
 
 // ─── App Entry Point ─────────────────────────────────────────────────────────
 
-/// Write a message to the persistent crash log (~/Library/Application Support/VoiceInk/crash.log).
+/// Write a message to the persistent crash log (~/Library/Application Support/TypeUrVoice/crash.log).
 /// This survives app termination, unlike stderr which goes nowhere in production builds.
 pub(crate) fn log_to_file(msg: &str) {
     logging::append(msg);
@@ -1303,11 +1303,17 @@ pub(crate) fn log_to_file(msg: &str) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Must come first: move the pre-rename `VoiceInk` data folder before
+    // anything (logging included) creates the new `TypeUrVoice` folder.
+    if let Some(msg) = storage::settings::migrate_legacy_data_dir() {
+        log_to_file(&msg);
+    }
+
     // Install a panic hook that logs to file before crashing — stderr is lost in production
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let msg = format!("PANIC: {}", info);
-        eprintln!("[VoiceInk] {}", msg);
+        eprintln!("[TypeUrVoice] {}", msg);
         log_to_file(&msg);
         default_hook(info);
     }));
@@ -1506,27 +1512,27 @@ pub fn run() {
             tauri::async_runtime::spawn(local_llm::server::run_idle_watcher(app.handle().clone()));
             knock::sync(&app.handle());
 
-            eprintln!("[VoiceInk] App started — ready");
+            eprintln!("[TypeUrVoice] App started — ready");
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("error while building VoiceInk")
+        .expect("error while building TypeUrVoice")
         .run(|app, event| {
             match event {
                 tauri::RunEvent::ExitRequested { api, .. } => {
-                    // Allow exit if the user explicitly clicked "Quit VoiceInk"
+                    // Allow exit if the user explicitly clicked "Quit TypeUrVoice"
                     let quitting = app.try_state::<state::QuitFlag>()
                         .map(|f| f.0.load(Ordering::Relaxed))
                         .unwrap_or(false);
                     if quitting {
-                        eprintln!("[VoiceInk] ExitRequested — user quit, allowing exit");
+                        eprintln!("[TypeUrVoice] ExitRequested — user quit, allowing exit");
                     } else {
-                        eprintln!("[VoiceInk] ExitRequested — preventing exit (app stays in tray)");
+                        eprintln!("[TypeUrVoice] ExitRequested — preventing exit (app stays in tray)");
                         api.prevent_exit();
                     }
                 }
                 tauri::RunEvent::Exit => {
-                    eprintln!("[VoiceInk] Exit event — app shutting down");
+                    eprintln!("[TypeUrVoice] Exit event — app shutting down");
                     // Never leave a multi-GB model server running after Quit.
                     if let Some(llm) = app.try_state::<SharedLlm>() {
                         llm.stop_now();

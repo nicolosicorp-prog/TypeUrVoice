@@ -205,7 +205,7 @@ export function EngineTab({ settings, onUpdate }: Props) {
         }>
           <KeyRow
             slot={settings.cloudTranscriptionProvider === 'groq' ? 'compat:groq' : 'openai'}
-            description="Stored locally on your device with owner-only permissions — never sent to VoiceInk servers."
+            description="Stored locally on your device with owner-only permissions — never sent to TypeUrVoice servers."
           />
         </Section>
       )}
@@ -306,7 +306,7 @@ export function EngineTab({ settings, onUpdate }: Props) {
               value={settings.openaiCompatUrl}
               onChange={e => onUpdate({ openaiCompatUrl: e.target.value })}
               placeholder="https://example.com/v1"
-              description="VoiceInk appends /chat/completions automatically."
+              description="TypeUrVoice appends /chat/completions automatically."
             />
           </div>
         )}

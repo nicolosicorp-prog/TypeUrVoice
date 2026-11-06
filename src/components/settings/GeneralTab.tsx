@@ -163,7 +163,7 @@ export function GeneralTab({ settings, onUpdate }: Props) {
       <Section title="System">
         <Toggle
           label="Start on login"
-          description="Launch VoiceInk when you log in"
+          description="Launch TypeUrVoice when you log in"
           checked={settings.startOnLogin}
           onChange={val => onUpdate({ startOnLogin: val })}
         />
@@ -268,7 +268,7 @@ function MicrophonePicker({ value, onChange }: {
       />
       {isMissing && (
         <div role="alert" style={{ color: '#FCA5A5', fontSize: 'var(--text-xs)', marginTop: 4 }}>
-          The saved device is not currently connected. VoiceInk will fall back to the system default.
+          The saved device is not currently connected. TypeUrVoice will fall back to the system default.
         </div>
       )}
     </div>

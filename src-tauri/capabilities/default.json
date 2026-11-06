@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for all VoiceInk windows",
+  "description": "Default capabilities for all TypeUrVoice windows",
   "windows": ["settings", "overlay", "onboarding"],
   "permissions": [
     "core:default",

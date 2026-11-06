@@ -186,11 +186,11 @@ fn fallback_to_raw(result: Result<String>, raw_text: &str, mode: &str) -> String
     match result {
         Ok(text) if !text.trim().is_empty() => text,
         Ok(_) => {
-            eprintln!("[VoiceInk] LLM returned empty {} — falling back to raw text", mode);
+            eprintln!("[TypeUrVoice] LLM returned empty {} — falling back to raw text", mode);
             raw_text.to_string()
         }
         Err(e) => {
-            eprintln!("[VoiceInk] {} failed ({}) — falling back to raw text", mode, e);
+            eprintln!("[TypeUrVoice] {} failed ({}) — falling back to raw text", mode, e);
             raw_text.to_string()
         }
     }

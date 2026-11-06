@@ -1,4 +1,4 @@
-# VoiceInk
+# TypeUrVoice
 
 A fast, private, keyboard-driven voice-to-text app for macOS and Windows. Press a hotkey, speak, release — your words are transcribed and pasted directly into whatever app you're using. Lives quietly in the menu bar, never steals focus, and runs fully offline if you want it to.
 
@@ -6,7 +6,7 @@ A fast, private, keyboard-driven voice-to-text app for macOS and Windows. Press 
 
 ## What It Does
 
-VoiceInk turns speech into text wherever your cursor is. The flow is:
+TypeUrVoice turns speech into text wherever your cursor is. The flow is:
 
 1. **Press your hotkey** (default: Option+Space on macOS).
 2. **Speak** — a small overlay shows you're recording.
@@ -19,7 +19,7 @@ No window switching. No "send" button. No web app. Just speak and keep working.
 
 ## Three Ways to Run It
 
-VoiceInk is designed around a single privacy/convenience tradeoff that you control:
+TypeUrVoice is designed around a single privacy/convenience tradeoff that you control:
 
 ### Fully Online
 - **Transcription:** OpenAI Whisper API (or Groq Whisper)
@@ -43,7 +43,7 @@ You can switch between these in Settings → Engine at any time.
 ## Core Features
 
 ### Recording & Hotkeys
-- **Global hotkey** — works from any app, no need to focus VoiceInk
+- **Global hotkey** — works from any app, no need to focus TypeUrVoice
 - **Two recording modes:**
   - **Hold** — press and hold to record, release to stop (600 ms minimum to avoid accidental triggers)
   - **Toggle** — press once to start, press again to stop
@@ -105,7 +105,7 @@ You can switch between these in Settings → Engine at any time.
 
 ## Multi-Provider LLM Support
 
-VoiceInk speaks three wire protocols (OpenAI Chat, Anthropic Messages, Google Gemini) and ships with **10 built-in providers**:
+TypeUrVoice speaks three wire protocols (OpenAI Chat, Anthropic Messages, Google Gemini) and ships with **10 built-in providers**:
 
 | Provider | Default Model | Key Storage Slot |
 |---|---|---|
@@ -133,7 +133,7 @@ VoiceInk speaks three wire protocols (OpenAI Chat, Anthropic Messages, Google Ge
 
 - **Files are owner-only** — `settings.json`, `keys.json`, `history.db` all chmod 0600 on Unix
 - **Atomic writes** — settings file is written to a temp file then renamed, so a mid-write crash never zeroes your config
-- **Local API keys** — stored in `~/Library/Application Support/VoiceInk/keys.json` with restricted permissions (no keychain dependency)
+- **Local API keys** — stored in `~/Library/Application Support/TypeUrVoice/keys.json` with restricted permissions (no keychain dependency)
 - **No telemetry, no analytics, no tracking**
 - **Verbose diagnostics opt-in** — transcript previews in `crash.log` are off by default; enable in General → System if you need to share logs
 - **Crash log rotation** — capped at 1 MB live + 1 MB backup (3 MB worst case on disk)
@@ -206,9 +206,9 @@ DMG size: ~8 MB.
 
 ## File Locations (macOS)
 
-- **Settings:** `~/Library/Application Support/VoiceInk/settings.json`
-- **API keys:** `~/Library/Application Support/VoiceInk/keys.json`
-- **History:** `~/Library/Application Support/VoiceInk/history.db`
-- **Whisper models:** `~/Library/Application Support/VoiceInk/models/`
-- **Model verification cache:** `~/Library/Application Support/VoiceInk/model_cache.json`
-- **Crash log:** `~/Library/Application Support/VoiceInk/crash.log` (rotates at 1 MB)
+- **Settings:** `~/Library/Application Support/TypeUrVoice/settings.json`
+- **API keys:** `~/Library/Application Support/TypeUrVoice/keys.json`
+- **History:** `~/Library/Application Support/TypeUrVoice/history.db`
+- **Whisper models:** `~/Library/Application Support/TypeUrVoice/models/`
+- **Model verification cache:** `~/Library/Application Support/TypeUrVoice/model_cache.json`
+- **Crash log:** `~/Library/Application Support/TypeUrVoice/crash.log` (rotates at 1 MB)

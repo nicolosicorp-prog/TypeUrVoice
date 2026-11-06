@@ -70,8 +70,8 @@ pub fn build_request(
     // attribute traffic. Harmless on every other OpenAI-compatible host.
     if cfg.endpoint.contains("openrouter.ai") {
         req = req
-            .header("HTTP-Referer", "https://voiceink.app")
-            .header("X-Title", "VoiceInk");
+            .header("HTTP-Referer", "https://typeurvoice.app")
+            .header("X-Title", "TypeUrVoice");
     }
 
     req
@@ -113,7 +113,7 @@ pub fn parse_response(raw_body: &str) -> Result<String> {
     if !content.is_empty() {
         Ok(content.to_string())
     } else if !reasoning.is_empty() {
-        eprintln!("[VoiceInk] LLM content was empty — using reasoning_content as fallback");
+        eprintln!("[TypeUrVoice] LLM content was empty — using reasoning_content as fallback");
         Ok(reasoning.to_string())
     } else {
         Ok(String::new())

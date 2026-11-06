@@ -82,7 +82,7 @@ pub fn parse_response(raw_body: &str) -> Result<String> {
 
     if let Some(reason) = &result.stop_reason {
         if reason == "max_tokens" {
-            eprintln!("[VoiceInk] Anthropic: hit max_tokens — output may be truncated");
+            eprintln!("[TypeUrVoice] Anthropic: hit max_tokens — output may be truncated");
         }
     }
 

@@ -66,7 +66,7 @@ pub fn record_until_stopped(
                 }
             }
         },
-        |err| eprintln!("[VoiceInk] Audio stream error: {}", err),
+        |err| eprintln!("[TypeUrVoice] Audio stream error: {}", err),
         None,
     )?;
 
@@ -76,7 +76,7 @@ pub fn record_until_stopped(
     let start = Instant::now();
     while !stop_flag.load(Ordering::Relaxed) {
         if start.elapsed().as_secs() >= MAX_RECORDING_SECS {
-            eprintln!("[VoiceInk] Recording hit {}s timeout — stopping", MAX_RECORDING_SECS);
+            eprintln!("[TypeUrVoice] Recording hit {}s timeout — stopping", MAX_RECORDING_SECS);
             stop_flag.store(true, Ordering::Relaxed);
             break;
         }

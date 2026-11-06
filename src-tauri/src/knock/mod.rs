@@ -122,18 +122,18 @@ mod tests {
 
     /// Live check against the real sensor, with the same typing veto as the
     /// app. Prints every impact and every recognised pattern:
-    /// VOICEINK_KNOCK_SECS=120 VOICEINK_KNOCK_SENS=medium \
+    /// TYPEURVOICE_KNOCK_SECS=120 TYPEURVOICE_KNOCK_SENS=medium \
     ///   cargo test --release --lib knock_live -- --ignored --nocapture
     #[test]
     #[ignore]
     fn knock_live() {
-        let secs: u64 = std::env::var("VOICEINK_KNOCK_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
-        let sensitivity = match std::env::var("VOICEINK_KNOCK_SENS").as_deref() {
+        let secs: u64 = std::env::var("TYPEURVOICE_KNOCK_SECS").ok().and_then(|s| s.parse().ok()).unwrap_or(60);
+        let sensitivity = match std::env::var("TYPEURVOICE_KNOCK_SENS").as_deref() {
             Ok("high") => KnockSensitivity::High,
             Ok("low") => KnockSensitivity::Low,
             _ => KnockSensitivity::Medium,
         };
-        let knocks = if std::env::var("VOICEINK_KNOCK_TRIPLE").is_ok() { 3 } else { 2 };
+        let knocks = if std::env::var("TYPEURVOICE_KNOCK_TRIPLE").is_ok() { 3 } else { 2 };
         println!("\nListening for {secs} s — {knocks} knocks, {sensitivity:?} sensitivity. Ctrl-C to stop.\n");
         let stop = Arc::new(AtomicBool::new(false));
         let timer_stop = Arc::clone(&stop);

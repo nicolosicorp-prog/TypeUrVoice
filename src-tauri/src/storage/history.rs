@@ -18,7 +18,7 @@ pub struct HistoryEntry {
 }
 
 fn db_path() -> Result<PathBuf> {
-    Ok(crate::storage::settings::voiceink_data_dir()?.join("history.db"))
+    Ok(crate::storage::settings::typeurvoice_data_dir()?.join("history.db"))
 }
 
 use super::restrict_permissions;
