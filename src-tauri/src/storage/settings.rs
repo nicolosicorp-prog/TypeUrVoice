@@ -30,6 +30,18 @@ fn migrate_dir(old: &std::path::Path, new: &std::path::Path) -> Option<String> {
     if !old.is_dir() {
         return None;
     }
+    // A new folder holding nothing but log files (written by something that
+    // logged before this ran — e.g. a test run) doesn't count: fold its log
+    // into the old one and take the old folder over.
+    if new.is_dir() && only_logs(new) {
+        if let Ok(stray) = std::fs::read_to_string(new.join("crash.log")) {
+            use std::io::Write;
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(old.join("crash.log")) {
+                let _ = f.write_all(stray.as_bytes());
+            }
+        }
+        let _ = std::fs::remove_dir_all(new);
+    }
     if new.exists() {
         return Some(format!(
             "Data dir: both {} and {} exist — keeping the new one, old folder left untouched",
@@ -39,6 +51,14 @@ fn migrate_dir(old: &std::path::Path, new: &std::path::Path) -> Option<String> {
     Some(match std::fs::rename(old, new) {
         Ok(()) => format!("Data dir: moved {} → {}", old.display(), new.display()),
         Err(e) => format!("Data dir: could not move {} → {}: {}", old.display(), new.display(), e),
+    })
+}
+
+fn only_logs(dir: &std::path::Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else { return false };
+    entries.flatten().all(|e| {
+        let name = e.file_name().to_string_lossy().into_owned();
+        e.path().is_file() && (name.starts_with("crash.log") || name == ".DS_Store")
     })
 }
 
@@ -136,6 +156,22 @@ mod tests {
         std::fs::create_dir_all(&old).unwrap();     // both exist → leave both
         assert!(migrate_dir(&old, &new).unwrap().contains("both"));
         assert!(old.exists() && new.join("settings.json").exists());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn log_only_new_dir_does_not_block_migration() {
+        let root = std::env::temp_dir().join(format!("tuv-migrate-logs-{}", std::process::id()));
+        let (old, new) = (root.join("VoiceInk"), root.join("TypeUrVoice"));
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::create_dir_all(&new).unwrap();
+        std::fs::write(old.join("settings.json"), "{}").unwrap();
+        std::fs::write(old.join("crash.log"), "old\n").unwrap();
+        std::fs::write(new.join("crash.log"), "stray\n").unwrap();
+
+        assert!(migrate_dir(&old, &new).unwrap().contains("moved"));
+        assert!(new.join("settings.json").exists() && !old.exists());
+        assert_eq!(std::fs::read_to_string(new.join("crash.log")).unwrap(), "old\nstray\n");
         std::fs::remove_dir_all(&root).unwrap();
     }
 
