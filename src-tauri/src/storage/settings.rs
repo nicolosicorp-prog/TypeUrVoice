@@ -58,12 +58,19 @@ const RETIRED_MODELS: &[(&str, &str)] = &[
     // Google — the 2.5 family shuts down in October 2026
     ("gemini-2.5-flash", "gemini-3.5-flash-lite"),
     ("gemini-2.5-flash-lite", "gemini-3.5-flash-lite"),
-    ("gemini-2.5-pro", "gemini-3.1-pro-preview"),
+    ("gemini-2.5-pro", "gemini-3.8-flash"),
+    // Deprecated Oct 2026 — Google already routes them to the successors
+    ("gemini-3.5-flash", "gemini-3.6-flash"),
+    ("gemini-3.7-flash", "gemini-3.8-flash"),
     // OpenAI-compatible presets
-    ("grok-4-fast", "grok-4.1-fast"),
+    // grok-4.1-fast was retired May 2026; xAI redirects it to grok-4.3
+    ("grok-4-fast", "grok-4.3"),
+    ("grok-4.1-fast", "grok-4.3"),
     ("grok-4", "grok-4.3"),
     ("mixtral-8x7b-32768", "llama-3.3-70b-versatile"),
-    ("deepseek-chat", "deepseek-v4-flash"),
+    // DeepSeek renamed its flash model; the old names are legacy aliases
+    ("deepseek-chat", "deepseek-flash"),
+    ("deepseek-v4-flash", "deepseek-flash"),
     ("deepseek-reasoner", "deepseek-v4-pro"),
     ("pixtral-large-latest", "mistral-large-latest"),
     ("sonar-reasoning", "sonar-pro"),

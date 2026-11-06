@@ -174,31 +174,34 @@ export function HelpTab() {
           VoiceInk runs a small AI model itself — no Ollama, LM Studio, account or
           API key. Download one of: <B>Qwen3.5 2B</B> (recommended, fast,
           multilingual), <B>Qwen3.5 0.8B</B> (tiniest), <B>Qwen3.5 4B</B> (best
-          quality of the small ones) or <B>Gemma 4 E2B</B> (strong on Czech/Slovak).
+          quality of the small ones), <B>Gemma 4 E2B</B> (strong on Czech/Slovak), or —
+          on a Mac with 16 GB of memory or more — the larger <B>Gemma 4 E4B</B> and
+          <B> Qwen3.5 9B</B> for the best Polished and Custom results.
           Every download is verified by SHA-256.
           <br /><br />
           <B>Load automatically and unload when idle</B> (default ON): the model
           starts loading the moment you press the shortcut — while you're still
           speaking — and frees its memory after a few idle minutes (you choose how
           many). Turn it OFF to keep the model loaded from launch until you quit:
-          slightly faster, but it always uses 1–4 GB of RAM. <B>Unload now</B>
+          slightly faster, but it always uses 1–6 GB of RAM. <B>Unload now</B>
           frees the memory immediately. In Raw mode the model is never loaded.
         </Field>
         <Field name="OpenAI">
           <B>GPT-6 Luna</B> (default) is OpenAI's most efficient model for quick,
-          high-volume tasks like cleanup. GPT-5.6 Luna, GPT-5 nano/mini and GPT-6.1
-          Sol are also listed. VoiceInk asks reasoning models for minimal thinking so
+          high-volume tasks like cleanup. GPT-6.1 Terra (fast), GPT-6.1 Sol
+          (balanced) and GPT-6 Astra (flagship) are also listed. VoiceInk asks reasoning models for minimal thinking so
           cleanup stays fast. Get a key at platform.openai.com.
         </Field>
         <Field name="Anthropic Claude">
-          <B>Claude Haiku 5.5</B> (default), Sonnet 5.5, Opus 5.5. Excellent at
+          <B>Claude Haiku 5.5</B> (default), Sonnet 5.5, Opus 5.5 and Fable 5.1
+          (the most capable, and the slowest). Excellent at
           following instructions and preserving the speaker's voice. VoiceInk uses
           low effort for fast cleanup. Get a key at console.anthropic.com.
         </Field>
         <Field name="Google Gemini">
-          <B>Gemini 3.5 Flash-Lite</B> (default), Gemini 3.8 Flash, 3.5 Flash and
-          3.1 Pro. The older Gemini 2.5 models are being shut down — VoiceInk moves
-          saved 2.5 settings to the 3.x replacements automatically. Get a key at
+          <B>Gemini 3.5 Flash-Lite</B> (default), Gemini 3.8 Flash, 3.6 Flash and
+          Gemini 4 Argon. Retired models (Gemini 2.5, 3.5 Flash, 3.7 Flash) are moved
+          to their replacements automatically. Get a key at
           aistudio.google.com. We set permissive safety thresholds — this is a
           dictation tool, the user is dictating their own words.
         </Field>
@@ -214,7 +217,7 @@ export function HelpTab() {
         <Field name="Ollama (local)">
           Sends transcripts to a local Ollama server (default
           <B> http://localhost:11434</B>). Run <Code>ollama serve</Code> and pull a
-          model like <Code>gemma4</Code> or <Code>qwen3</Code>. Fully offline. No key
+          model like <Code>gemma4</Code>, <Code>qwen3.5</Code> or <Code>ministral-3</Code>. Fully offline. No key
           needed. (Built-in is simpler if you don't already use Ollama.)
         </Field>
         <Field name="LM Studio (local)">

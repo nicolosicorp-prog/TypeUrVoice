@@ -44,9 +44,9 @@ interface LocalModelInfo {
 // ── Provider catalogue (UI side — display labels only; canonical data lives in Rust) ──
 const PROVIDERS: { value: TextProcessor; label: string; sub?: string }[] = [
   { value: 'builtin',      label: 'Built-in (on this Mac)', sub: 'Private, free, no setup' },
-  { value: 'openai',       label: 'OpenAI',                 sub: 'GPT-6 Luna, GPT-5' },
-  { value: 'anthropic',    label: 'Anthropic Claude',       sub: 'Claude Haiku/Sonnet/Opus 5.5' },
-  { value: 'gemini',       label: 'Google Gemini',          sub: 'Gemini 3.5 Flash-Lite / 3.8 Flash' },
+  { value: 'openai',       label: 'OpenAI',                 sub: 'GPT-6 Luna / 6.1 Terra / 6.1 Sol' },
+  { value: 'anthropic',    label: 'Anthropic Claude',       sub: 'Claude Haiku/Sonnet/Opus 5.5, Fable 5.1' },
+  { value: 'gemini',       label: 'Google Gemini',          sub: 'Gemini 3.5 Flash-Lite / 3.8 Flash / 4 Argon' },
   { value: 'openaicompat', label: 'OpenAI-compatible (cloud)', sub: 'Grok, Groq, DeepSeek, Mistral, OpenRouter…' },
   { value: 'ollama',       label: 'Ollama (local)',         sub: 'http://localhost:11434' },
   { value: 'lmstudio',     label: 'LM Studio (local)',      sub: 'http://localhost:1234' },
@@ -324,7 +324,7 @@ export function EngineTab({ settings, onUpdate }: Props) {
               label="Model name"
               value={settings.textProcessorModel}
               onChange={e => onUpdate({ textProcessorModel: e.target.value })}
-              placeholder={settings.textProcessor === 'lmstudio' ? 'lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF' : 'llama3.2'}
+              placeholder={settings.textProcessor === 'lmstudio' ? 'lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF' : 'gemma4'}
             />
             <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
               {settings.textProcessor === 'ollama'

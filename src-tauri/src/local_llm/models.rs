@@ -1,7 +1,8 @@
 //! Catalog of downloadable GGUF models for the Built-in text processor.
 //!
 //! Hashes are the Hugging Face LFS SHA-256 values (verified against a local
-//! `shasum -a 256` of the downloaded file). All models are Apache-2.0.
+//! `shasum -a 256` of the downloaded file; gemma-4-e4b and qwen3.5-9b rely on
+//! the published HF oid, still verified on download). All models are Apache-2.0.
 
 use anyhow::Result;
 use serde::Serialize;
@@ -61,6 +62,26 @@ pub const MODELS: &[LlmModel] = &[
         hash: "740185b21d22ceb83a11c3aa62ad5842ef32c70f6096d756bbee85a1e4ec34b8",
         size_mb: 3110,
         ram_gb: 3.6,
+    },
+    LlmModel {
+        key: "gemma-4-e4b",
+        name: "Gemma 4 E4B",
+        note: "Larger Gemma 4 — noticeably better Polished and Custom output. Best on 16 GB Macs.",
+        url: "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf",
+        filename: "gemma-4-E4B-it-Q4_K_M.gguf",
+        hash: "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
+        size_mb: 4980,
+        ram_gb: 5.5,
+    },
+    LlmModel {
+        key: "qwen3.5-9b",
+        name: "Qwen3.5 9B",
+        note: "Highest quality on-device option. Slower; needs a 16 GB Mac or more.",
+        url: "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf",
+        filename: "Qwen3.5-9B-Q4_K_M.gguf",
+        hash: "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8",
+        size_mb: 5680,
+        ram_gb: 6.3,
     },
 ];
 

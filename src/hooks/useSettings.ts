@@ -24,7 +24,7 @@ const DEFAULT_SETTINGS: Settings = {
   processingModel: 'gpt-6-luna',
   textProcessor: 'openai',
   textProcessorUrl: 'http://localhost:11434',
-  textProcessorModel: 'llama3.2',
+  textProcessorModel: 'gemma4',
   secondaryShortcut: null,
   secondaryLanguage: 'en',
   primaryLanguage: 'cs',
