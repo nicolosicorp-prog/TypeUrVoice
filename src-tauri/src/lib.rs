@@ -10,6 +10,7 @@ mod http;
 mod logging;
 mod local_llm;
 mod knock;
+mod stream;
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -298,8 +299,37 @@ struct UpdateStatus {
     notes: Option<String>,
 }
 
+/// Model downloads in flight, by "<kind>:<key>". A second request for the
+/// same model is ignored: both would write the same `.partial` file, and
+/// the slower one then fails with "No such file or directory" once the
+/// first has renamed it into place. (Switching Settings tabs mid-download
+/// re-enabled the Download button, which is how users hit this.)
+static DOWNLOADS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Removes its key from `DOWNLOADS` when the download task ends, however it ends.
+struct DownloadSlot(String);
+
+impl DownloadSlot {
+    fn claim(id: String) -> Option<Self> {
+        let mut active = DOWNLOADS.lock().unwrap_or_else(|e| e.into_inner());
+        if active.contains(&id) {
+            log_to_file(&format!("Download of {} already running — ignoring the second request", id));
+            return None;
+        }
+        active.push(id.clone());
+        Some(Self(id))
+    }
+}
+
+impl Drop for DownloadSlot {
+    fn drop(&mut self) {
+        DOWNLOADS.lock().unwrap_or_else(|e| e.into_inner()).retain(|k| k != &self.0);
+    }
+}
+
 #[tauri::command]
 async fn download_local_model(model_key: String, app: AppHandle) -> Result<(), String> {
+    let Some(slot) = DownloadSlot::claim(format!("whisper:{}", model_key)) else { return Ok(()) };
     let key_for_progress = model_key.clone();
     let key_for_result   = model_key.clone();
     let app_for_progress = app.clone();
@@ -307,6 +337,7 @@ async fn download_local_model(model_key: String, app: AppHandle) -> Result<(), S
     let app_for_error    = app.clone();
 
     tauri::async_runtime::spawn(async move {
+        let _slot = slot;
         let result = transcription::local::download_model(
             &key_for_result,
             move |progress| {
@@ -335,7 +366,7 @@ async fn download_local_model(model_key: String, app: AppHandle) -> Result<(), S
 
 // ─── Built-in LLM (bundled llama-server) ─────────────────────────────────────
 
-type SharedLlm = Arc<local_llm::server::LlmServer>;
+pub(crate) type SharedLlm = Arc<local_llm::server::LlmServer>;
 
 #[tauri::command]
 async fn list_builtin_llm_models() -> Result<Vec<local_llm::models::ModelRow>, String> {
@@ -347,7 +378,9 @@ async fn download_builtin_llm_model(model_key: String, app: AppHandle) -> Result
     let info = local_llm::models::lookup(&model_key)
         .ok_or_else(|| format!("Unknown built-in model: {}", model_key))?;
     let dest = local_llm::models::path(&model_key).map_err(|e| e.to_string())?;
+    let Some(slot) = DownloadSlot::claim(format!("llm:{}", model_key)) else { return Ok(()) };
     tauri::async_runtime::spawn(async move {
+        let _slot = slot;
         let app_for_progress = app.clone();
         let key_for_progress = model_key.clone();
         let result = storage::download::download_verified(info.url, &dest, Some(info.hash), move |progress| {
@@ -403,7 +436,7 @@ async fn unload_builtin_llm(app: AppHandle, llm: tauri::State<'_, SharedLlm>) ->
 }
 
 /// Whether a recording with these settings will call the text processor.
-fn needs_text_processing(s: &Settings) -> bool {
+pub(crate) fn needs_text_processing(s: &Settings) -> bool {
     s.output_mode != state::OutputMode::Raw || s.translation_enabled || s.summary_enabled
 }
 
@@ -614,22 +647,33 @@ fn start_audio_capture(app: &AppHandle, language: Option<String>) {
             s.capture_done = Arc::clone(&capture_done);
             let preview_busy = Arc::new(AtomicBool::new(false));
             s.preview_busy = Arc::clone(&preview_busy);
+            s.stream = None;
             Some((samples, stop_flag, sample_rate, capture_done, preview_busy))
         }
     });
     let Some((samples, stop_flag, sample_rate_arc, capture_done, preview_busy)) = acquired else { return; };
+
+    // A profile-learning pass would hold the (single-slot) LLM while this
+    // recording needs it — stop it; it runs again after the next recording.
+    abort_learning();
 
     eprintln!("[TypeUrVoice] Recording started (language: {:?})", language);
 
     let _ = app.emit("recording-state", "recording");
     show_overlay(app);
 
-    let (input_device, live) = with_settings(app, |s| {
-        let live = (s.live_preview && s.engine == state::Engine::Local).then(|| {
-            let lang = language.clone().unwrap_or_else(|| s.source_language.clone());
-            (s.local_model.key().to_string(), lang, s.remove_fillers)
-        });
-        (s.input_device.clone(), live)
+    let settings_now = with_settings(app, |s| s.clone());
+    let input_device = settings_now.input_device.clone();
+    let streaming = stream_typing_active(&settings_now);
+    let live = ((settings_now.live_preview || streaming) && settings_now.engine == state::Engine::Local).then(|| {
+        let lang = language.clone().unwrap_or_else(|| settings_now.source_language.clone());
+        (settings_now.local_model.key().to_string(), lang, settings_now.remove_fillers)
+    });
+    let stream_session = streaming.then(|| {
+        let st = stream::StreamSession::new();
+        st.spawn_worker(app.clone(), settings_now.clone());
+        with_state(app, |s| s.stream = Some(Arc::clone(&st)));
+        st
     });
 
     // Built-in LLM: start loading while the user speaks so the model is ready
@@ -654,6 +698,9 @@ fn start_audio_capture(app: &AppHandle, language: Option<String>) {
             model_key,
             language,
             remove_fillers,
+            vocabulary: transcription::vocabulary_prompt(&settings_now),
+            show_preview: settings_now.live_preview,
+            stream: stream_session,
         });
     }
 
@@ -683,11 +730,12 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
                 Arc::clone(&s.capture_done),
                 s.recording_started_at,
                 Arc::clone(&s.preview_busy),
+                s.stream.take(),
             ))
         }
         _ => None,
     });
-    let Some((active_language, samples_arc, sample_rate_arc, capture_done, started_at, preview_busy)) = captured else { return; };
+    let Some((active_language, samples_arc, sample_rate_arc, capture_done, started_at, preview_busy, stream_session)) = captured else { return; };
     let stopped_at = std::time::Instant::now();
     if let Some(t) = started_at {
         log_to_file(&format!("Timing: recorded {}ms", stopped_at.duration_since(t).as_millis()));
@@ -755,11 +803,33 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
             log_to_file(&format!("Knock: trimmed last {}ms of audio", tail.as_millis()));
         }
 
+        // Typing while speaking: let the worker type what it has, then only
+        // the audio after the last typed sentence goes through the pipeline.
+        let prior = match stream_session {
+            Some(st) => {
+                let output = st.finish().await;
+                let committed = st.committed.load(Ordering::Acquire);
+                if output.typed > 0 {
+                    samples.drain(..committed.min(samples.len()));
+                    log_to_file(&format!(
+                        "Stream: {} chunk(s) typed while speaking, {:.1}s of audio left",
+                        output.typed, samples.len() as f64 / sample_rate as f64
+                    ));
+                    Some(output)
+                } else {
+                    // Nothing reached the app (no sentence finished, or typing
+                    // was blocked): process the whole recording as usual.
+                    None
+                }
+            }
+            None => None,
+        };
+
         eprintln!("[TypeUrVoice] Pipeline: {} samples, {}Hz", samples.len(), sample_rate);
 
         // Outer pipeline timeout — sized to accommodate transcription + up to three
         // LLM calls (cleanup, translation, summary) each bounded to 45s below.
-        let pipeline_future = run_pipeline(samples, sample_rate, settings, api_key, http_client, whisper_cache, &app_clone);
+        let pipeline_future = run_pipeline(samples, sample_rate, settings, api_key, http_client, whisper_cache, &app_clone, prior);
         let result = tokio::time::timeout(
             tokio::time::Duration::from_secs(360),
             pipeline_future,
@@ -769,6 +839,7 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
             Ok(Ok(_)) => {
                 log_to_file("Pipeline completed successfully");
                 eprintln!("[TypeUrVoice] Pipeline completed successfully");
+                maybe_learn(&app_clone);
             }
             Ok(Err(e)) => {
                 let msg = format!("Pipeline error: {}", e);
@@ -819,9 +890,16 @@ async fn run_pipeline(
     #[cfg(feature = "local-whisper")] cache: std::sync::Arc<transcription::whisper_cache::WhisperCache>,
     #[cfg(not(feature = "local-whisper"))] cache: std::sync::Arc<()>,
     app: &AppHandle,
+    // Sentences already typed while speaking; `samples` is then only the
+    // audio after them.
+    prior: Option<stream::Output>,
 ) -> anyhow::Result<()> {
-    if samples.is_empty() {
+    if samples.is_empty() && prior.is_none() {
         return Err(anyhow::anyhow!("No audio recorded. Hold the shortcut while speaking."));
+    }
+    // Same language handling as the typed sentences (decided while speaking).
+    if let Some(plan) = prior.as_ref().and_then(|p| p.plan.as_ref()) {
+        stream::apply_plan(&mut settings, plan, "");
     }
 
     let duration_secs = samples.len() as f64 / sample_rate as f64;
@@ -853,15 +931,25 @@ async fn run_pipeline(
     log_to_file(&format!("Step 1: Transcribing ({:?} engine, {:.1}s audio)", settings.engine, duration_secs));
     eprintln!("[TypeUrVoice] Step 1: Transcribing ({:?} engine)...", settings.engine);
 
-    let transcript = transcription::transcribe(
-        wav_bytes,
-        &samples,
-        sample_rate,
-        &settings,
-        api_key.clone(),
-        &http,
-        cache,
-    ).await?;
+    // After typing while speaking, a remainder under 0.3 s is just the
+    // release of the key — nothing to transcribe.
+    let transcript = if prior.is_some() && (samples.len() as f64) < 0.3 * sample_rate as f64 {
+        transcription::TranscriptionResult {
+            text: String::new(),
+            language: settings.source_language.clone(),
+            requested_language: None,
+        }
+    } else {
+        transcription::transcribe(
+            wav_bytes,
+            &samples,
+            sample_rate,
+            &settings,
+            api_key.clone(),
+            &http,
+            cache,
+        ).await?
+    };
 
     let transcribe_ms = t_transcribe.elapsed().as_millis();
     if settings.diagnostics_verbose {
@@ -880,7 +968,7 @@ async fn run_pipeline(
         safe_truncate(&transcript.text, 60),
     );
 
-    if transcript.text.trim().is_empty() {
+    if transcript.text.trim().is_empty() && prior.is_none() {
         // Distinguish "mic is dead" from "mic is fine but Whisper gave nothing".
         // rms < 0.001 is effectively pure silence — almost always a permission
         // issue or wrong input device.
@@ -892,12 +980,38 @@ async fn run_pipeline(
         return Err(anyhow::anyhow!(msg));
     }
 
+    // Spoke one language on another language's shortcut (e.g. Czech on the
+    // English one): the transcript is in the spoken language, so clean it up
+    // in that language and translate into the requested one. The shortcut's
+    // language is the output language — it overrides the Settings target.
+    if let Some(requested) = &transcript.requested_language {
+        settings.source_language = transcript.language.clone();
+        settings.translation_enabled = true;
+        settings.target_language = requested.clone();
+        log_to_file(&format!(
+            "Language switch: spoke {} with {} requested — translating to {}",
+            transcript.language, requested, settings.target_language
+        ));
+    }
+
     // ── Step 2: Process text ────────────────────────────────────────────────
     let _ = app.emit("pipeline-step", "processing");
     let t_process = std::time::Instant::now();
     let needs_processing = needs_text_processing(&settings);
 
-    let processed = if !needs_processing {
+    let mut speaker = processing::SpeakerContext::for_settings(&settings);
+    if let Some(p) = &prior {
+        speaker.earlier_source = p.processed.join(" ");
+        speaker.earlier_output = p.outputs.join(" ");
+    }
+    let processed = if transcript.text.trim().is_empty() {
+        processing::ProcessingResult {
+            processed_text: String::new(),
+            translated_text: None,
+            summary: None,
+            final_text: String::new(),
+        }
+    } else if !needs_processing {
         eprintln!("[TypeUrVoice] Step 2: Raw mode — skipping processing");
         processing::ProcessingResult {
             processed_text: transcript.text.clone(),
@@ -949,6 +1063,7 @@ async fn run_pipeline(
             &settings,
             api_key.as_deref(),
             &http,
+            &speaker,
         ).await?;
         if let Some(llm) = &builtin_llm {
             llm.touch(); // idle timer counts from the end of the last use
@@ -957,6 +1072,45 @@ async fn run_pipeline(
     };
 
     let process_ms = t_process.elapsed().as_millis();
+
+    // With sentences typed while speaking: insert only what isn't in the
+    // app yet, but keep the whole dictation for history and the clipboard.
+    let (transcript, processed, insert_text) = match &prior {
+        None => {
+            let insert = processed.final_text.clone();
+            (transcript, processed, insert)
+        }
+        Some(p) => {
+            let rest = processed.final_text.trim().to_string();
+            let pending = join_nonempty(&[p.untyped(), rest.clone()]);
+            let insert = if pending.is_empty() { pending } else { format!(" {}", pending) };
+            let any_translation = p.translated.iter().any(Option::is_some) || processed.translated_text.is_some();
+            let translated = any_translation.then(|| {
+                let mut parts: Vec<String> = p.translated.iter().zip(&p.outputs)
+                    .map(|(t, o)| t.clone().unwrap_or_else(|| o.clone()))
+                    .collect();
+                parts.push(processed.translated_text.clone().unwrap_or_else(|| rest.clone()));
+                join_nonempty(&parts)
+            });
+            let mut all_raw = p.raw.clone();
+            all_raw.push(transcript.text.clone());
+            let mut all_processed = p.processed.clone();
+            all_processed.push(processed.processed_text.clone());
+            let mut all_final = p.outputs.clone();
+            all_final.push(rest);
+            (
+                transcription::TranscriptionResult { text: join_nonempty(&all_raw), ..transcript },
+                processing::ProcessingResult {
+                    processed_text: join_nonempty(&all_processed),
+                    translated_text: translated,
+                    summary: None,
+                    final_text: join_nonempty(&all_final),
+                },
+                insert,
+            )
+        }
+    };
+    let streamed = prior.is_some();
     eprintln!("[TypeUrVoice] Final text: {:?}", safe_truncate(&processed.final_text, 60));
 
     // ── Step 3: Save to history ─────────────────────────────────────────────
@@ -977,15 +1131,22 @@ async fn run_pipeline(
     let final_text = processed.final_text.clone();
     let auto_paste = settings.auto_paste;
 
-    log_to_file(&format!("Step 4: {} text ({} chars)", if auto_paste { "Pasting" } else { "Copying" }, final_text.len()));
+    log_to_file(&format!("Step 4: {} text ({} chars)", if auto_paste { "Pasting" } else { "Copying" }, insert_text.len()));
     eprintln!("[TypeUrVoice] Step 4: {} text ({} chars)",
-        if auto_paste { "Pasting" } else { "Copying" }, final_text.len());
+        if auto_paste { "Pasting" } else { "Copying" }, insert_text.len());
 
     // Paste on a blocking thread (enigo uses system APIs).
     // Wrap in catch_unwind so a panic in enigo doesn't kill the app.
     let paste_result = tokio::task::spawn_blocking(move || {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            if auto_paste {
+            if streamed {
+                // Type the rest like the sentences before it (paste if typing is
+                // blocked), then leave the whole dictation on the clipboard.
+                if !insert_text.is_empty() && paste::type_text(&insert_text).is_err() {
+                    paste::paste_text(insert_text.trim_start())?;
+                }
+                paste::copy_to_clipboard(&final_text)
+            } else if auto_paste {
                 paste::paste_text(&final_text)
             } else {
                 paste::copy_to_clipboard(&final_text)
@@ -1047,6 +1208,151 @@ async fn run_pipeline(
 
     eprintln!("[TypeUrVoice] Pipeline complete");
     Ok(())
+}
+
+// ─── Speaker profile learning ───────────────────────────────────────────────
+
+/// The background learning pass, so a new recording can stop it (it would
+/// hold the single-slot built-in model the recording needs).
+static LEARN_TASK: Mutex<Option<tauri::async_runtime::JoinHandle<()>>> = Mutex::new(None);
+
+fn abort_learning() {
+    if let Some(h) = LEARN_TASK.lock().unwrap_or_else(|e| e.into_inner()).take() {
+        h.abort();
+    }
+}
+
+fn is_on_device_processor(s: &Settings) -> bool {
+    matches!(
+        s.text_processor,
+        state::TextProcessor::BuiltIn | state::TextProcessor::Ollama | state::TextProcessor::LmStudio
+    )
+}
+
+/// After a recording: update the speaker profile once enough new
+/// dictations piled up. Automatic only with an on-device text processor —
+/// with a cloud one it would send old dictations out without being asked
+/// (the "Update now" button does it on request).
+fn maybe_learn(app: &AppHandle) {
+    let settings = with_settings(app, |s| s.clone());
+    if !settings.learn_from_history || !is_on_device_processor(&settings) {
+        return;
+    }
+    let prev = storage::speaker::load();
+    let new = history::open()
+        .and_then(|c| history::count_after(&c, prev.last_history_id))
+        .unwrap_or(0);
+    if new < processing::learn::LEARN_EVERY {
+        return;
+    }
+    let mut slot = LEARN_TASK.lock().unwrap_or_else(|e| e.into_inner());
+    if slot.is_some() {
+        return; // one already scheduled/running
+    }
+    let app = app.clone();
+    *slot = Some(tauri::async_runtime::spawn(async move {
+        // Give the user's next dictation the model first.
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        let idle = with_state(&app, |s| matches!(s.recording_state, RecordingState::Idle));
+        if idle {
+            if let Err(e) = run_learning(&app).await {
+                log_to_file(&format!("Speaker profile: update failed: {}", e));
+            }
+        }
+        LEARN_TASK.lock().unwrap_or_else(|e| e.into_inner()).take();
+    }));
+}
+
+async fn run_learning(app: &AppHandle) -> anyhow::Result<storage::speaker::SpeakerProfile> {
+    let mut settings = with_settings(app, |s| s.clone());
+    let llm = (settings.text_processor == state::TextProcessor::BuiltIn)
+        .then(|| app.state::<SharedLlm>().inner().clone());
+    if let Some(llm) = &llm {
+        settings.text_processor_url = llm.ensure_running(app, &settings.builtin_llm_model).await
+            .map_err(|e| anyhow::anyhow!("Built-in model unavailable: {}", e))?;
+    }
+    let prev = storage::speaker::load();
+    let (entries, corrections) = {
+        let conn = history::open()?;
+        (history::entries_after(&conn, 0, 40)?, history::recent_corrections(&conn, 6)?)
+    };
+    let http = app.state::<reqwest::Client>().inner().clone();
+    let started = std::time::Instant::now();
+    let result = processing::learn::learn(&http, &settings, &prev, &entries, &corrections).await;
+    if let Some(llm) = &llm {
+        llm.touch();
+    }
+    let profile = match result {
+        Ok(p) => p,
+        Err(e) => {
+            // Don't retry on every recording: wait for the next batch.
+            let mut kept = prev.clone();
+            kept.last_history_id = entries.iter().map(|e| e.id).max().unwrap_or(prev.last_history_id);
+            let _ = storage::speaker::save(&kept);
+            return Err(e);
+        }
+    };
+    storage::speaker::save(&profile)?;
+    log_to_file(&format!(
+        "Speaker profile updated from {} dictation(s) in {}ms ({} term(s))",
+        entries.len(), started.elapsed().as_millis(), profile.terms.len()
+    ));
+    let _ = app.emit("speaker-profile-updated", &profile);
+    Ok(profile)
+}
+
+#[tauri::command]
+async fn get_speaker_profile() -> storage::speaker::SpeakerProfile {
+    storage::speaker::load()
+}
+
+/// The user edited the learned profile in Settings.
+#[tauri::command]
+async fn save_speaker_profile(profile: storage::speaker::SpeakerProfile) -> Result<(), String> {
+    let on_disk = storage::speaker::load();
+    let profile = storage::speaker::SpeakerProfile {
+        terms: profile.terms.into_iter().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).collect(),
+        last_history_id: on_disk.last_history_id,
+        updated_at: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0),
+        ..profile
+    };
+    storage::speaker::save(&profile).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn clear_speaker_profile() -> Result<(), String> {
+    abort_learning();
+    storage::speaker::clear().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn learn_speaker_profile_now(app: AppHandle) -> Result<storage::speaker::SpeakerProfile, String> {
+    abort_learning();
+    run_learning(&app).await.map_err(|e| e.to_string())
+}
+
+/// The user fixed an output in History — store it so cleanup and
+/// translation learn from it.
+#[tauri::command]
+async fn correct_history_entry(id: i64, text: String) -> Result<storage::history::HistoryEntry, String> {
+    let conn = history::open().map_err(|e| e.to_string())?;
+    let entry = history::save_correction(&conn, id, &text).map_err(|e| e.to_string())?;
+    log_to_file("History: correction saved");
+    Ok(entry)
+}
+
+fn join_nonempty(parts: &[String]) -> String {
+    parts.iter().map(|p| p.trim()).filter(|p| !p.is_empty()).collect::<Vec<_>>().join(" ")
+}
+
+/// Typing while speaking is on and can work for this recording: local
+/// engine (it needs the live transcription), auto-paste on, and no summary
+/// (a summary needs the whole dictation first).
+fn stream_typing_active(s: &Settings) -> bool {
+    s.stream_typing && s.engine == state::Engine::Local && s.auto_paste && !s.summary_enabled
 }
 
 fn save_to_history(
@@ -1464,6 +1770,11 @@ pub fn run() {
             get_builtin_llm_status,
             unload_builtin_llm,
             knock_available,
+            get_speaker_profile,
+            save_speaker_profile,
+            clear_speaker_profile,
+            learn_speaker_profile_now,
+            correct_history_entry,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

@@ -88,6 +88,8 @@ export function EngineTab({ settings, onUpdate }: Props) {
     let unsubs: Array<() => void> = []
     listen<{ model: string; progress: number }>('model-download-progress', e => {
       setDownloadProgress(p => ({ ...p, [e.payload.model]: e.payload.progress }))
+      // Re-attach to a download that started before this tab was opened.
+      setDownloading(e.payload.progress < 1 ? e.payload.model : null)
     }).then(f => unsubs.push(f))
     listen<string>('model-download-done', e => {
       setDownloading(null)

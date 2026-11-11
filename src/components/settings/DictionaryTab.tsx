@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { Input } from '../ui/Input'
 import { Button } from '../ui/Button'
 import type { Settings } from '../../types'
+import { YourVoicePanel } from './YourVoicePanel'
 
 interface Props {
   settings: Settings
@@ -25,6 +26,7 @@ export function DictionaryTab({ settings, onUpdate }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+      <YourVoicePanel settings={settings} onUpdate={onUpdate} />
       <div>
         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, marginBottom: 10 }}>Custom Words</div>
         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginBottom: 12 }}>

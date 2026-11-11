@@ -107,6 +107,7 @@ pub async fn transcribe(
     Ok(super::TranscriptionResult {
         text: result.text.trim().to_string(),
         language: result.language.unwrap_or_else(|| "en".to_string()),
+        requested_language: None,
     })
 }
 

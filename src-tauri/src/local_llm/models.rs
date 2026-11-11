@@ -66,7 +66,7 @@ pub const MODELS: &[LlmModel] = &[
     LlmModel {
         key: "gemma-4-e4b",
         name: "Gemma 4 E4B",
-        note: "Larger Gemma 4 — noticeably better Polished and Custom output. Best on 16 GB Macs.",
+        note: "Larger Gemma 4 — noticeably better Polished, Custom and translation (e.g. Czech → English). Best on 16 GB Macs.",
         url: "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf",
         filename: "gemma-4-E4B-it-Q4_K_M.gguf",
         hash: "85a896a047553e842f25297ee5b031d64ff30147d9c4af17b1e4b394cd1fab87",
@@ -76,7 +76,7 @@ pub const MODELS: &[LlmModel] = &[
     LlmModel {
         key: "qwen3.5-9b",
         name: "Qwen3.5 9B",
-        note: "Highest quality on-device option. Slower; needs a 16 GB Mac or more.",
+        note: "Highest quality on-device option, best for translation. Slower; needs a 16 GB Mac or more.",
         url: "https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/main/Qwen3.5-9B-Q4_K_M.gguf",
         filename: "Qwen3.5-9B-Q4_K_M.gguf",
         hash: "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8",

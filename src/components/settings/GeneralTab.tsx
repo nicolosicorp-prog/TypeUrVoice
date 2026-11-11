@@ -156,6 +156,20 @@ export function GeneralTab({ settings, onUpdate }: Props) {
           checked={settings.livePreview}
           onChange={val => onUpdate({ livePreview: val })}
         />
+        <Toggle
+          label="Type sentences while speaking"
+          description={
+            settings.engine !== 'local'
+              ? 'Available with the Local engine (Settings → Engine).'
+              : !settings.autoPaste
+                ? 'Needs Auto-paste (Settings → Output).'
+                : settings.summaryEnabled
+                  ? 'Paused while Summary is on — a summary needs the whole dictation.'
+                  : 'Each finished sentence goes into your text field (cleaned up and translated) while you keep talking. The rest follows when you stop.'
+          }
+          checked={settings.streamTyping}
+          onChange={val => onUpdate({ streamTyping: val })}
+        />
       </Section>
 
       <KnockSection settings={settings} onUpdate={onUpdate} />

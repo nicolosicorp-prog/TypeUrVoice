@@ -13,6 +13,67 @@ use crate::state::{Engine, Settings};
 pub struct TranscriptionResult {
     pub text: String,
     pub language: String,
+    /// Set when a language was requested (shortcut or Settings) but the audio
+    /// was clearly in another one. `text` is then in `language` (what was
+    /// spoken) and holds the requested language, which the pipeline translates into.
+    pub requested_language: Option<String>,
+}
+
+/// Whether to transcribe in the detected language instead of the one the user
+/// asked for. Forcing Whisper to the wrong language makes it write a garbled
+/// half-translation (Czech speech on the English shortcut came out as
+/// "I wanted to use the matici, but also the same."), so a confident mismatch
+/// is transcribed as spoken and translated afterwards.
+///
+/// Conservative on purpose: short Czech clips are sometimes misdetected as
+/// English (see Issue #5), so the detected language must be confident and the
+/// requested one near-zero. Close pairs (cs/sk) are never switched — Whisper
+/// confuses them and a forced hint there is what the user wants.
+pub(crate) fn should_use_spoken_language(
+    requested: &str,
+    detected: &str,
+    p_detected: f32,
+    p_requested: f32,
+) -> bool {
+    const CLOSE_PAIRS: &[(&str, &str)] = &[("cs", "sk")];
+    let close = CLOSE_PAIRS
+        .iter()
+        .any(|&(a, b)| (requested == a && detected == b) || (requested == b && detected == a));
+    detected != requested && !close && p_detected >= 0.70 && p_requested <= 0.10
+}
+
+/// Whisper's vocabulary hint: dictionary terms plus terms learned from the
+/// speaker's history. `None` when there are none.
+pub fn vocabulary_terms(settings: &Settings) -> Vec<String> {
+    let mut terms: Vec<String> = settings.dictionary.iter()
+        .map(|t| t.trim().to_string())
+        .filter(|t| !t.is_empty())
+        .collect();
+    if settings.learn_from_history {
+        for t in crate::storage::speaker::load().terms {
+            if !terms.iter().any(|x| x.eq_ignore_ascii_case(&t)) {
+                terms.push(t);
+            }
+        }
+    }
+    terms.truncate(40);
+    terms
+}
+
+pub fn vocabulary_prompt(settings: &Settings) -> Option<String> {
+    let terms = vocabulary_terms(settings);
+    (!terms.is_empty()).then(|| format!("{}.", terms.join(", ")))
+}
+
+/// The transcript is nothing but (part of) the vocabulary prompt — what
+/// Whisper produces on silence when it has a prompt.
+pub(crate) fn echoes_prompt(text: &str, prompt: &str) -> bool {
+    let norm = |s: &str| -> String {
+        s.to_lowercase().chars().filter(|c| c.is_alphanumeric() || c.is_whitespace()).collect::<String>()
+            .split_whitespace().collect::<Vec<_>>().join(" ")
+    };
+    let (t, p) = (norm(text), norm(prompt));
+    !t.is_empty() && p.contains(&t)
 }
 
 // ─── Hallucination filter (shared by cloud + local) ─────────────────────────
@@ -164,7 +225,7 @@ pub async fn transcribe(
                 audio_wav,
                 &key,
                 &settings.source_language,
-                &settings.dictionary,
+                &vocabulary_terms(settings),
                 &settings.cloud_transcription_provider,
                 settings.cloud_transcription_model.as_deref(),
                 http,
@@ -173,6 +234,7 @@ pub async fn transcribe(
         Engine::Local => {
             let model_key = settings.local_model.key().to_string();
             let language = settings.source_language.clone();
+            let vocabulary = vocabulary_prompt(settings);
             let samples_owned = samples.to_vec();
             #[cfg(feature = "local-whisper")]
             let cache_for_task = cache.clone();
@@ -184,7 +246,7 @@ pub async fn transcribe(
             // Add a 120-second timeout to prevent whisper.cpp from running forever.
             let transcription_task = tokio::task::spawn_blocking(move || {
                 std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    local::transcribe_blocking(&*cache_for_task, &samples_owned, sample_rate, &model_key, &language)
+                    local::transcribe_blocking(&*cache_for_task, &samples_owned, sample_rate, &model_key, &language, vocabulary.as_deref())
                 }))
             });
 
@@ -243,4 +305,42 @@ pub async fn transcribe(
         }
     }
     Ok(result)
+}
+
+#[cfg(test)]
+mod vocabulary_tests {
+    #[test]
+    fn echo_detection() {
+        assert!(super::echoes_prompt("Acme API, Tauri.", "Acme API, Tauri, TypeUrVoice."));
+        assert!(!super::echoes_prompt("Musíme používat Acme API.", "Acme API, Tauri."));
+        assert!(!super::echoes_prompt("", "Acme"));
+    }
+}
+
+#[cfg(test)]
+mod language_switch_tests {
+    use super::should_use_spoken_language as switch;
+
+    #[test]
+    fn czech_on_english_shortcut_switches() {
+        assert!(switch("en", "cs", 0.93, 0.01));
+    }
+
+    #[test]
+    fn matching_language_never_switches() {
+        assert!(!switch("cs", "cs", 0.99, 0.99));
+    }
+
+    #[test]
+    fn unsure_detection_keeps_the_hint() {
+        // Short/quiet Czech clips misdetected as English (Issue #5).
+        assert!(!switch("cs", "en", 0.55, 0.30));
+        assert!(!switch("cs", "en", 0.80, 0.15));
+    }
+
+    #[test]
+    fn close_pair_keeps_the_hint() {
+        assert!(!switch("cs", "sk", 0.95, 0.02));
+        assert!(!switch("sk", "cs", 0.95, 0.02));
+    }
 }

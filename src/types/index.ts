@@ -144,6 +144,12 @@ export interface Settings {
   removeFillers: boolean
   /** Stream partial text into the recording bubble (local engine only). */
   livePreview: boolean
+  /** Type finished sentences into the focused app while still speaking (local engine). */
+  streamTyping: boolean
+  /** The user's own note on how they speak — used by cleanup, translation and learning. */
+  speakerNotes: string
+  /** Learn a speaker profile from History and use it. */
+  learnFromHistory: boolean
   /** Knocking on the MacBook chassis toggles recording (Apple Silicon MacBooks). */
   knockEnabled: boolean
   knockPattern: KnockPattern
@@ -169,6 +175,19 @@ export interface HistoryEntry {
   summary: string | null
   durationSecs: number | null
   createdAt: string
+  /** The user fixed this entry's output in History. */
+  corrected: boolean
+}
+
+/** What TypeUrVoice learned about how the user speaks (speaker_profile.json). */
+export interface SpeakerProfile {
+  topics: string
+  terms: string[]
+  recognition: string
+  style: string
+  /** Unix seconds; 0 = never updated. */
+  updatedAt: number
+  lastHistoryId: number
 }
 
 export interface PermissionsState {

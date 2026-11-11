@@ -39,7 +39,10 @@ export function HelpTab() {
           A second shortcut bound to a different language. Useful if you switch between
           two languages — e.g. <B>Option+Space</B> for Czech and <B>Alt+Shift+Space</B>
           for English. Both shortcuts go through the same pipeline; only the language
-          differs.
+          differs. If you speak a different language than the shortcut's (say, Czech on
+          the English one) and the clip is longer than about 2 seconds, the local engine
+          notices: it transcribes what you actually said and translates it into the
+          shortcut's language with your text processor.
         </Field>
         <Field name="Microphone">
           Pick a specific input device or leave on <B>System default</B>. If the device
@@ -60,6 +63,19 @@ export function HelpTab() {
           the text that gets pasted comes from a final pass over the whole recording
           after you stop, so it can be slightly more accurate than what you saw.
           Turn it off to save a little battery on long dictations.
+        </Field>
+        <Field name="Type sentences while speaking">
+          With the <B>Local</B> engine, each sentence goes into your text field as soon
+          as you've finished it, already cleaned up and translated. A sentence counts
+          as finished when it ends with a full stop, question mark or exclamation mark
+          and has come out the same twice in a row; very long stretches without one
+          are sent anyway. When you stop, the rest follows, and the whole dictation is
+          on the clipboard. Each sentence is translated together with the ones before
+          it, so the context isn't lost. Needs <B>Auto-paste</B>, and pauses while
+          <B> Summary</B> is on. Keep the cursor where the text should go — clicking
+          into another app sends the next sentence there. A sentence that's already
+          typed can't be corrected afterwards, so for important text the single paste
+          at the end is the most accurate.
         </Field>
         <Field name="Knock to Record">
           On Apple Silicon MacBooks you can start a recording by knocking on the laptop
@@ -314,6 +330,16 @@ export function HelpTab() {
           The language to translate <I>into</I>. Common pair: speak Czech, paste
           English.
         </Field>
+        <Field name="How translation stays true to you">
+          The translator is told the text comes from speech recognition, so it looks
+          for the word you most likely said instead of translating a misheard one
+          literally. It keeps negations and questions intact — a Czech
+          "Nebylo by lepší…?" becomes "Wouldn't it be better…?", not a negative
+          statement. It also uses your notes and learned profile (Dictionary tab) and
+          the translations you fixed in History. Small on-device models still miss
+          some words; <B>Gemma 4 E4B</B> or <B>Qwen3.5 9B</B> translate Czech much
+          better than the 2B models.
+        </Field>
       </Section>
 
       {/* ── Summary tab ── */}
@@ -344,6 +370,22 @@ export function HelpTab() {
 
       {/* ── Dictionary tab ── */}
       <Section title="Dictionary Tab">
+        <Field name="How You Speak — notes">
+          Tell TypeUrVoice anything about your speech, e.g. "I can't pronounce ř — it
+          sounds like ž". Cleanup and translation use the note to put back the words
+          the recognizer got wrong (so "pozádku" becomes "pořádku" instead of
+          staying misspelled).
+        </Field>
+        <Field name="Learn from my dictations">
+          Every 8 dictations, your on-device model (Built-in, Ollama or LM Studio)
+          reads your recent ones and updates a short profile: what you talk about,
+          names and terms, words it mishears for you, and how you phrase things. The
+          terms help Whisper spell them right, the rest helps cleanup and
+          translation sound like you. With an online text processor it only updates
+          when you click <B>Update now</B>, because that sends recent dictations to
+          the provider. You can edit or clear the profile at any time; it's stored
+          only on your Mac.
+        </Field>
         <Para>
           The dictionary lists words and phrases that Whisper should bias toward.
           Helpful for names, jargon, product names, and acronyms that Whisper would
@@ -354,9 +396,10 @@ export function HelpTab() {
           want — capitalization matters for proper nouns.
         </Field>
         <Field name="What it does">
-          Entries are passed to Whisper as a prompt hint. Whisper still has the final
-          say — the dictionary is a nudge, not a rule. It works best for unique words
-          (proper nouns) rather than common ones.
+          Entries (plus the terms from your learned profile) are passed to Whisper as
+          a prompt hint — with both the Local and Cloud engines. Whisper still has the
+          final say — the dictionary is a nudge, not a rule. It works best for unique
+          words (proper nouns) rather than common ones.
         </Field>
       </Section>
 
@@ -364,8 +407,15 @@ export function HelpTab() {
       <Section title="History Tab">
         <Field name="History list">
           Every transcription is saved locally to a SQLite database with the raw
-          text, processed text, language, duration and timestamp. Click any entry to
-          copy it back to your clipboard.
+          text, processed text, language, duration and timestamp. Click an entry to
+          see what you said and its translation; the copy icon copies the output.
+        </Field>
+        <Field name="Fix a text (pencil)">
+          Correct a cleanup or translation that came out wrong and click
+          <B> Save fix</B>. TypeUrVoice remembers the fix: the next time similar
+          words come up, the cleanup or translator gets your fix as an example, and
+          the learned profile picks it up too. Clearing History also forgets your
+          fixes.
         </Field>
         <Field name="Retention">
           History older than the chosen retention period is deleted automatically on

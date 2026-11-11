@@ -3,6 +3,7 @@ pub mod history;
 pub mod dictionary;
 pub mod api_keys;
 pub mod download;
+pub mod speaker;
 
 use anyhow::Result;
 use std::path::Path;

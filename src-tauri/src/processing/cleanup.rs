@@ -1,13 +1,18 @@
 use anyhow::Result;
 
+/// `speaker_hint`: what we know about the speaker (their note, learned
+/// recognition mistakes, terms) plus their past corrections — see
+/// `SpeakerContext::cleanup_hint`.
 pub async fn clean(
     http: &reqwest::Client,
     text: &str,
     cfg: &super::GptConfig,
     dict_hint: Option<&str>,
     language: &str,
+    speaker_hint: Option<&str>,
 ) -> Result<String> {
-    let system = build_clean_prompt(language, dict_hint);
+    let mut system = build_clean_prompt(language, dict_hint);
+    append_hint(&mut system, speaker_hint);
     super::gpt_complete(http, cfg, &system, text).await
 }
 
@@ -17,8 +22,10 @@ pub async fn polish(
     cfg: &super::GptConfig,
     dict_hint: Option<&str>,
     language: &str,
+    speaker_hint: Option<&str>,
 ) -> Result<String> {
-    let system = build_polish_prompt(language, dict_hint);
+    let mut system = build_polish_prompt(language, dict_hint);
+    append_hint(&mut system, speaker_hint);
     super::gpt_complete(http, cfg, &system, text).await
 }
 
@@ -74,6 +81,7 @@ fn build_clean_prompt(language: &str, dict_hint: Option<&str>) -> String {
         "You are a transcript cleanup assistant. The text is in {lang}; output MUST be in {lang} (no translation).\n\n\
         Apply ONLY these edits to this speech transcript:\n\
         - Fix grammar, spelling, punctuation, and capitalization.\n\
+        - The text comes from speech recognition. A word that is not a real {lang} word, or makes no sense in the sentence, was misheard: replace it with the real word that sounds almost the same and fits (often just a wrong or missing accent or one wrong letter). Never swap in a word with a different meaning.\n\
         - Remove obvious filler words and hesitations: 'um', 'uh', 'er', 'ah', 'hmm', and the discourse-marker uses of 'like', 'you know', 'I mean', 'sort of', 'kind of', 'basically'.\n\
         - Remove false starts and self-corrections; keep the corrected version.\n\
         - Preserve the speaker's wording, tone, sentence structure, and meaning everywhere else. Do NOT rephrase or rewrite.\n\
@@ -87,6 +95,13 @@ fn build_clean_prompt(language: &str, dict_hint: Option<&str>) -> String {
         prompt.push_str(hint);
     }
     prompt
+}
+
+fn append_hint(prompt: &mut String, hint: Option<&str>) {
+    if let Some(hint) = hint.filter(|h| !h.trim().is_empty()) {
+        prompt.push_str("\n\n");
+        prompt.push_str(hint);
+    }
 }
 
 fn build_polish_prompt(language: &str, dict_hint: Option<&str>) -> String {

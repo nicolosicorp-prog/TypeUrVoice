@@ -28,8 +28,12 @@ export function BuiltInLlmPanel({ settings, onUpdate }: Props) {
     api.getBuiltinLlmStatus().then(setStatus).catch(() => {})
     const unlisten = [
       listen<BuiltinLlmStatus>('builtin-llm-status', e => setStatus(e.payload)),
-      listen<{ model: string; progress: number }>('llm-download-progress', e =>
-        setProgress(p => ({ ...p, [e.payload.model]: e.payload.progress }))),
+      listen<{ model: string; progress: number }>('llm-download-progress', e => {
+        setProgress(p => ({ ...p, [e.payload.model]: e.payload.progress }))
+        // Re-attach to a download that started before this panel was shown
+        // (switching tabs unmounts it), so its button stays disabled.
+        setDownloading(e.payload.progress < 1 ? e.payload.model : null)
+      }),
       listen<string>('llm-download-done', () => { setDownloading(null); refresh() }),
       listen<{ model: string; error: string }>('llm-download-error', e => {
         setDownloading(null)

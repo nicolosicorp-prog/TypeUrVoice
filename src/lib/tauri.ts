@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { Settings, HistoryEntry, PermissionsState, ProviderInfo, OccupationProfile, BuiltinLlmModel, BuiltinLlmStatus } from '../types'
+import type { Settings, HistoryEntry, SpeakerProfile, PermissionsState, ProviderInfo, OccupationProfile, BuiltinLlmModel, BuiltinLlmStatus } from '../types'
 
 export const api = {
   getSettings: () => invoke<Settings>('get_settings'),
@@ -27,6 +27,14 @@ export const api = {
     invoke<HistoryEntry[]>('get_history', { limit, offset }),
   deleteHistoryEntry: (id: number) => invoke<void>('delete_history_entry', { id }),
   clearHistory: () => invoke<void>('clear_history'),
+  /** Replace an entry's output with the user's fix; the fix is remembered for learning. */
+  correctHistoryEntry: (id: number, text: string) =>
+    invoke<HistoryEntry>('correct_history_entry', { id, text }),
+
+  getSpeakerProfile: () => invoke<SpeakerProfile>('get_speaker_profile'),
+  saveSpeakerProfile: (profile: SpeakerProfile) => invoke<void>('save_speaker_profile', { profile }),
+  clearSpeakerProfile: () => invoke<void>('clear_speaker_profile'),
+  learnSpeakerProfileNow: () => invoke<SpeakerProfile>('learn_speaker_profile_now'),
 
   checkForUpdates(): Promise<{ available: boolean; version: string | null; notes: string | null }> {
     return invoke('check_for_updates')

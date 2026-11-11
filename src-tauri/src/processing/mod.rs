@@ -6,6 +6,10 @@ pub mod summary;
 pub mod providers;
 pub mod occupation_profiles;
 pub mod profile_dictionaries;
+pub mod speaker;
+pub mod learn;
+
+pub use speaker::SpeakerContext;
 
 use providers::Protocol;
 
@@ -211,15 +215,25 @@ fn guard_clean(raw_text: &str, cleaned: String, dictionary: &[String]) -> String
     }
 }
 
+/// The user's History corrections most like `text` (none on any error —
+/// learning must never break a recording).
+fn corrections_for(kind: &str, text: &str) -> Vec<crate::storage::history::Correction> {
+    crate::storage::history::open()
+        .and_then(|conn| crate::storage::history::relevant_corrections(&conn, kind, text, 3))
+        .unwrap_or_default()
+}
+
 pub async fn process(
     raw_text: &str,
     detected_language: &str,
     settings: &Settings,
     openai_key: Option<&str>,
     http: &reqwest::Client,
+    speaker: &SpeakerContext,
 ) -> Result<ProcessingResult> {
     let cfg = build_gpt_config(settings, openai_key);
     let lang_name = language_name(detected_language);
+    let cleanup_hint = speaker.cleanup_hint(&corrections_for("cleanup", raw_text));
 
     // When an occupation profile is active it owns the dictionary hint: we
     // merge the bundled pack for this (locale, occupation) with the user's
@@ -250,13 +264,13 @@ pub async fn process(
             let cleanup_cfg = cfg
                 .with_temperature(0.0)
                 .with_max_tokens(Some(token_budget_for(raw_text, 0.6)));
-            let result = cleanup::clean(http, raw_text, &cleanup_cfg, dict_hint.as_deref(), lang_name).await;
+            let result = cleanup::clean(http, raw_text, &cleanup_cfg, dict_hint.as_deref(), lang_name, cleanup_hint.as_deref()).await;
             guard_clean(raw_text, fallback_to_raw(result, raw_text, "cleanup"), &merged_dictionary)
         }
         OutputMode::Polished => {
             // Creative rewrite: keep default temperature, allow output ≈ input.
             let polish_cfg = cfg.with_max_tokens(Some(token_budget_for(raw_text, 1.0)));
-            let result = cleanup::polish(http, raw_text, &polish_cfg, dict_hint.as_deref(), lang_name).await;
+            let result = cleanup::polish(http, raw_text, &polish_cfg, dict_hint.as_deref(), lang_name, cleanup_hint.as_deref()).await;
             fallback_to_raw(result, raw_text, "polish")
         }
         OutputMode::Custom => {
@@ -276,18 +290,23 @@ pub async fn process(
     // Step 2: Translation (optional). Always 0.0 temperature — translation is
     // mechanical, deterministic. Source language passed through language_name
     // so prompts read "from Czech to English", not "from cs to English".
-    let translated = if settings.translation_enabled && settings.target_language != "auto" {
-        let source_code = if settings.source_language == "auto" {
-            detected_language
-        } else {
-            &settings.source_language
-        };
+    let source_code = if settings.source_language == "auto" {
+        detected_language
+    } else {
+        &settings.source_language
+    };
+    // Same language on both sides: nothing to translate (the LLM would only
+    // rewrite the text), so the processed text is the "translation".
+    let translated = if settings.translation_enabled && settings.target_language == source_code {
+        Some(processed.clone())
+    } else if settings.translation_enabled && settings.target_language != "auto" {
         let source = language_name(source_code);
         let target = language_name(&settings.target_language);
         let translate_cfg = cfg
             .with_temperature(0.0)
             .with_max_tokens(Some(token_budget_for(&processed, 1.5)));
-        Some(translation::translate(http, &processed, source, target, &translate_cfg).await?)
+        let hint = speaker.translation_hint(&corrections_for("translation", &processed));
+        Some(translation::translate(http, &processed, source_code, source, target, hint.as_deref(), &translate_cfg).await?)
     } else {
         None
     };

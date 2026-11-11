@@ -1208,3 +1208,59 @@ The app, crate, bundle and data folder are now **TypeUrVoice** (was VoiceInk). H
 - `productName` TypeUrVoice, bundle id **`com.typeurvoice.app`** (was `com.voiceink.app`), Cargo crates `typeurvoice` / `typeurvoice_lib`, npm package `typeurvoice`, env vars `TYPEURVOICE_*`, log prefix `[TypeUrVoice]`, DMG `TypeUrVoice_<ver>_aarch64.dmg`.
 - **Data folder** `~/Library/Application Support/TypeUrVoice/`. `storage::settings::migrate_legacy_data_dir()` runs first thing in `run()` and renames `…/VoiceInk` → `…/TypeUrVoice` if only the old one exists (settings, keys.json, models, llm-models, history.db, logs all move). If both exist the old one is left alone. crash.log: `Data dir: moved … → …` / `Data dir: both … exist …` / `Data dir: could not move …`.
 - New bundle id ⇒ macOS treats it as a new app: Microphone, Accessibility and Notifications must be granted again, and "Start on login" must be re-enabled. Remove the old `/Applications/VoiceInk.app` (quit it first — it would otherwise keep writing to the old folder).
+
+---
+
+## Spoken-Language Check (November 2026, branch `nov-2026-model-refresh`)
+
+**Bug:** Czech speech on the English shortcut (Control+W → `en`) came out as nonsense English with Czech words left in ("I wanted to use the matici, but also the same."). The forced `language=en` made whisper do its own speech translation, which turbo (large-v3-turbo) was never trained for. Translation then ran English → English and changed nothing (history ids 40–43).
+
+**Fix:**
+- `transcription/local.rs::spoken_language_if_different()` — when a language is forced and there are ≥2 s of audio, runs `pcm_to_mel` + `lang_detect` first. If `should_use_spoken_language()` (in `transcription/mod.rs`, unit-tested) says so, Whisper transcribes in the detected language instead. Rule: detected p ≥ 0.70, requested p ≤ 0.10, and the pair is not cs/sk.
+- `TranscriptionResult::requested_language` is set when that happens. `lib.rs` then sets `source_language` to the spoken language and turns on translation into the requested one. The shortcut's language is always the output language; it overrides the Settings translation target.
+- `processing::process` skips the LLM translation call when source == target (it used to translate en → en).
+- Cloud engine unchanged (the APIs don't return language probabilities).
+- Cost: one extra encoder pass, ~0.6 s on M4 Pro with turbo-q5 (6 s clip: 0.68 s → 1.28 s).
+- Bench any language: `TYPEURVOICE_BENCH_WAV=… TYPEURVOICE_BENCH_LANG=en cargo test --release --lib bench_local -- --ignored --nocapture`.
+
+crash.log: `Language check: requested=en p=0.00, detected=cs p=1.00 → transcribing as spoken`, `Language switch: spoke cs with en requested — translating to en`.
+
+---
+
+## Speaker Learning, Better Translation, Typing While Speaking (November 2026, branch `nov-2026-model-refresh`)
+
+User reports: Czech → English translations flipped meaning ("u sebe" → "scattered", negative questions came out as negative statements), misheard Czech words were translated literally ("loop" → "thief", "pozádku" → "in the back"), and the speaker can't pronounce ř (Whisper writes ž/z: "heždčí" = hezčí). They also wanted text to land in the text field sentence by sentence, not only in the bubble.
+
+### 1. Translation prompt (`processing/translation.rs`)
+- Tells the model the input is a speech transcript with possibly misheard words → translate what was most likely said; never add/drop a negation; questions stay questions; sound like the speaker.
+- `language_notes("cs"|"sk")`: negative questions are suggestions ("Nebylo by lepší…?" = "Wouldn't it be better…?"), double negation = one negation, ř/ž/z and accent mishearings.
+- Gets `SpeakerContext::translation_hint` (notes, learned profile, up to 3 relevant History corrections, earlier part of the dictation when streaming).
+- Replay on real history: `TYPEURVOICE_LLM_URL=http://127.0.0.1:8090 TYPEURVOICE_HISTORY_DB=… [TYPEURVOICE_SPEAKER_NOTE=…] cargo test --release --lib translate_history -- --ignored --nocapture` (start `src-tauri/binaries/llama-server-*` with the GGUF first). With Gemma 4 E2B: fixed "pozádku", the negative question and "nothing is spoken"; still wrong on "u sebe", "heždčí", "kytičků" — the 2B model is the limit. Model notes now point at Gemma 4 E4B / Qwen3.5 9B for translation.
+- Clean prompt gained a mishearing rule (replace a non-word with the near-identical real word). The Clean guard allows these (accent-folded similarity stays high).
+
+### 2. Speaker profile (`storage/speaker.rs`, `processing/learn.rs`, `processing/speaker.rs`)
+- `speaker_profile.json` (0600, atomic write) — NOT in settings.json, because the Settings UI writes the whole settings object back and would overwrite background updates. Fields: topics, terms, recognition ("heard → meant" + pronunciation pattern), style, updatedAt, lastHistoryId.
+- `learn()` sends the current profile, `speakerNotes`, ≤6 corrections and the newest dictations (≤5000 chars, RECOGNIZED vs FINAL) to the text processor; expects four `KEY:` lines; `parse()` rejects anything else (old profile kept, `lastHistoryId` advanced so it doesn't retry every recording).
+- `maybe_learn` (lib.rs) runs after a successful pipeline when `learnFromHistory`, the processor is on-device (BuiltIn/Ollama/LmStudio) and ≥8 new dictations since `lastHistoryId`; waits 10 s and only runs if Idle. `start_audio_capture` aborts it (`LEARN_TASK`) so it never holds the single-slot llama-server during a recording. Online processors: only via "Update now" (`learn_speaker_profile_now`).
+- Used by: Clean/Polished (`cleanup_hint`: notes + recognition + terms only — topics/style would invite rewriting), translation (full), Whisper (`transcription::vocabulary_prompt` = dictionary + learned terms, ≤40).
+- **Local Whisper now gets an initial prompt** (it never used the dictionary before; cloud already did). If the output is just an echo of the prompt (silence), it's dropped (`echoes_prompt`).
+- Settings: `speakerNotes` (string), `learnFromHistory` (default true). UI: `YourVoicePanel.tsx` at the top of the Dictionary tab (notes saved on blur; profile editable; Save / Update now / Clear).
+
+### 3. Corrections (`storage/history.rs`)
+- New table `corrections` (history_id, kind `translation`|`cleanup`, source, output, corrected). `save_correction` replaces the entry's translated/processed text, one correction per entry. `relevant_corrections` picks the 3 sharing the most ≥4-letter words with the new text (else most recent).
+- `HistoryEntry.corrected` (EXISTS subquery). `clear_all` also clears corrections; retention cleanup doesn't.
+- UI: History shows "You said" + "Translation", a pencil to fix the output (`correct_history_entry`), "translated" / "fixed by you" badges; copy copies the output (translation when present — it used to copy the Czech).
+
+### 4. Typing while speaking (`stream.rs`, `transcription/live.rs`)
+- Setting `streamTyping` (default false), active only with Local engine + autoPaste + no summary (`stream_typing_active`). Runs the live loop even with the bubble preview off (`Session::show_preview`).
+- `local::transcribe_segments_blocking` returns segments with timestamps; `check_language` flag so the spoken-language check runs once per recording in the live loop (it used to run every tick), giving a `LangPlan` (whisper language + translate_to).
+- Commit rule (`segments_to_commit`, unit-tested): leading segments that ended ≥1 s before the end of the audio, identical on two consecutive ticks, up to the last one ending in . ? ! …; ≥20 s waiting forces a commit of all but the last segment. Cut point = middle of the gap to the next segment. Only commits when the snapshot starts exactly at the committed sample (never skips audio).
+- Worker types each chunk in order: `processing::process` with `earlier_source/earlier_output` context (translation keeps context), fallback to raw text on any error. `paste::type_text` posts CGEvent unicode strings (≤16 UTF-16 units/event, flags 0 so a held Option/Control can't make shortcuts); multi-line text is pasted instead (a typed Return would send chat messages). After a typing failure the rest is pasted at the end, in order.
+- Stop: `StreamSession::finish()` waits for the worker (≤90 s); if anything was typed, the audio up to `committed` is dropped and `run_pipeline(prior)` transcribes only the remainder (skipped if <0.3 s), types it (paste fallback), puts the WHOLE dictation on the clipboard and in history. Nothing typed ⇒ normal full pass.
+- Not testable without a mic — logic covered by unit tests only; needs a manual try in the app.
+
+### New crash.log lines
+`Speaker profile updated from N dictation(s) in Xms (K term(s))`, `Speaker profile: update failed: …`, `History: correction saved`, `Whisper echoed the vocabulary hint — treating as no speech`, `Stream: typed chunk in Xms`, `Stream: typing failed (…) — the rest is pasted at the end`, `Stream: processing failed (…)`, `Stream: N chunk(s) typed while speaking, Xs of audio left`, `Live preview: N update(s), K chunk(s) committed for typing`.
+
+### Fix: "No such file or directory (os error 2)" after a model download
+Switching Settings tabs unmounts the download panels, which reset `downloading` and re-enabled the Download button mid-download; a second click ran a second download into the same `<file>.partial`. The first one verified and renamed it, then the second failed on the missing `.partial` (the model itself was fine — SHA-256 matched). Fix: `DownloadSlot` in `lib.rs` (static in-flight list keyed `whisper:<key>` / `llm:<key>`, released on Drop) makes a duplicate request a no-op, and both panels re-attach from `*-download-progress` events. crash.log: `Download of llm:<key> already running — ignoring the second request`.

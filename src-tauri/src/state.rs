@@ -398,6 +398,15 @@ pub struct Settings {
     /// Show partial text in the recording bubble while speaking. Local
     /// engine only (re-runs Whisper on the growing buffer).
     pub live_preview: bool,
+    /// Type finished sentences into the focused app while still speaking
+    /// (Local engine; see `stream`). The rest is typed when recording stops.
+    pub stream_typing: bool,
+    /// The user's own note on how they speak ("I can't pronounce ř — it
+    /// sounds like ž"). Given to cleanup, translation and profile learning.
+    pub speaker_notes: String,
+    /// Learn a speaker profile from History (see `processing::learn`) and
+    /// use it in cleanup, translation and Whisper's vocabulary hint.
+    pub learn_from_history: bool,
     /// Knocking on the MacBook chassis starts/stops recording (primary
     /// language). Needs the Apple Silicon MacBook accelerometer — see `knock`.
     pub knock_enabled: bool,
@@ -475,6 +484,9 @@ impl Default for Settings {
             locale_format_enabled: true,
             remove_fillers: true,
             live_preview: true,
+            stream_typing: false,
+            speaker_notes: String::new(),
+            learn_from_history: true,
             knock_enabled: false,
             knock_pattern: KnockPattern::Double,
             knock_sensitivity: KnockSensitivity::Medium,
@@ -533,6 +545,8 @@ pub struct AppState {
     /// True while a live-preview inference is running for the current
     /// session. The final pass waits for it so both don't compete for the GPU.
     pub preview_busy: Arc<AtomicBool>,
+    /// Typing-while-speaking session for the current recording, if on.
+    pub stream: Option<Arc<crate::stream::StreamSession>>,
 }
 
 impl Default for AppState {
@@ -546,6 +560,7 @@ impl Default for AppState {
             active_language: None,
             capture_done: Arc::new(AtomicBool::new(true)),
             preview_busy: Arc::new(AtomicBool::new(false)),
+            stream: None,
         }
     }
 }

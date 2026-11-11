@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Copy, Trash2, Clock } from 'lucide-react'
+import { Copy, Trash2, Clock, Pencil } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Select } from '../ui/Select'
 import { api } from '../../lib/tauri'
@@ -24,6 +24,30 @@ export function HistoryTab({ settings, onUpdate }: Props) {
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<number | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [editing, setEditing] = useState<number | null>(null)
+  const [draft, setDraft] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
+
+  /** What was pasted: the translation when there is one. */
+  const outputOf = (e: HistoryEntry) =>
+    e.translatedText && e.translatedText !== e.processedText ? e.translatedText : e.processedText
+
+  const startEdit = (e: HistoryEntry) => {
+    setExpanded(e.id)
+    setEditing(e.id)
+    setDraft(outputOf(e))
+    setEditError(null)
+  }
+
+  const saveEdit = async (id: number) => {
+    try {
+      const updated = await api.correctHistoryEntry(id, draft)
+      setEntries(list => list.map(x => (x.id === id ? updated : x)))
+      setEditing(null)
+    } catch (err) {
+      setEditError(String(err))
+    }
+  }
 
   const loadHistory = () => {
     setLoading(true)
@@ -63,7 +87,8 @@ export function HistoryTab({ settings, onUpdate }: Props) {
   // obvious and reversible (webview confirm() dialogs don't work here).
   const onKey = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape' && confirmClear) setConfirmClear(false)
-  }, [confirmClear])
+    if (e.key === 'Escape' && editing !== null) setEditing(null)
+  }, [confirmClear, editing])
   useEffect(() => {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -148,7 +173,7 @@ export function HistoryTab({ settings, onUpdate }: Props) {
                   fontSize: 'var(--text-xs)', color: 'var(--text-primary)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
-                  {entry.processedText.slice(0, 80)}{entry.processedText.length > 80 ? '…' : ''}
+                  {outputOf(entry).slice(0, 80)}{outputOf(entry).length > 80 ? '…' : ''}
                 </div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
                   <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{formatDate(entry.createdAt)}</span>
@@ -157,11 +182,34 @@ export function HistoryTab({ settings, onUpdate }: Props) {
                     background: 'var(--bg-hover)', color: 'var(--text-tertiary)',
                     textTransform: 'uppercase', letterSpacing: '0.04em',
                   }}>{entry.mode}</span>
+                  {entry.translatedText && entry.translatedText !== entry.processedText && (
+                    <span style={{
+                      fontSize: 9, padding: '1px 5px', borderRadius: 999,
+                      background: 'var(--bg-hover)', color: 'var(--text-tertiary)',
+                      textTransform: 'uppercase', letterSpacing: '0.04em',
+                    }}>translated</span>
+                  )}
+                  {entry.corrected && (
+                    <span style={{
+                      fontSize: 9, padding: '1px 5px', borderRadius: 999,
+                      background: 'var(--bg-hover)', color: 'var(--text-secondary)',
+                      textTransform: 'uppercase', letterSpacing: '0.04em',
+                    }}>fixed by you</span>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 <button
-                  onClick={e => { e.stopPropagation(); copyEntry(entry.processedText) }}
+                  onClick={e => { e.stopPropagation(); startEdit(entry) }}
+                  aria-label="Fix this text"
+                  title="Fix this text — TypeUrVoice learns from your fixes"
+                  style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4, display: 'flex' }}
+                >
+                  <Pencil size={12} />
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); copyEntry(outputOf(entry)) }}
+                  aria-label="Copy text"
                   style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4, display: 'flex' }}
                 >
                   <Copy size={12} />
@@ -177,13 +225,52 @@ export function HistoryTab({ settings, onUpdate }: Props) {
 
             {expanded === entry.id && (
               <div style={{
-                padding: '0 10px 10px',
+                padding: '6px 10px 10px',
                 borderTop: '1px solid var(--border-subtle)',
                 fontSize: 'var(--text-xs)', color: 'var(--text-secondary)',
                 lineHeight: 1.6, whiteSpace: 'pre-wrap',
-                maxHeight: 120, overflowY: 'auto',
+                display: 'flex', flexDirection: 'column', gap: 6,
               }}>
-                {entry.processedText}
+                {entry.translatedText && entry.translatedText !== entry.processedText && (
+                  <div style={{ maxHeight: 100, overflowY: 'auto' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>You said</div>
+                    {entry.processedText}
+                  </div>
+                )}
+                {editing === entry.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <textarea
+                      value={draft}
+                      autoFocus
+                      onChange={e => setDraft(e.target.value)}
+                      aria-label="Corrected text"
+                      style={{
+                        width: '100%', minHeight: 80, boxSizing: 'border-box',
+                        background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+                        border: '1px solid var(--border-focus)', borderRadius: 'var(--radius)',
+                        padding: '6px 8px', fontSize: 'var(--text-xs)', fontFamily: 'inherit',
+                        lineHeight: 1.5, resize: 'vertical',
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
+                      <Button variant="secondary" size="sm" onClick={() => saveEdit(entry.id)}
+                        disabled={!draft.trim() || draft.trim() === outputOf(entry).trim()}>
+                        Save fix
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
+                      <span style={{ fontSize: 10, color: editError ? '#FF6B6B' : 'var(--text-tertiary)' }}>
+                        {editError ?? 'Future cleanups and translations learn from this.'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: 120, overflowY: 'auto' }}>
+                    {entry.translatedText && entry.translatedText !== entry.processedText && (
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Translation</div>
+                    )}
+                    {outputOf(entry)}
+                  </div>
+                )}
               </div>
             )}
           </div>
