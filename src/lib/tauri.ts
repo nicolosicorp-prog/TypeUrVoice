@@ -43,6 +43,7 @@ export const api = {
   listInputDevices: () => invoke<string[]>('list_input_devices'),
   showCrashLog: () => invoke<void>('show_crash_log'),
   knockAvailable: () => invoke<boolean>('knock_available'),
+  mediaControlAvailable: () => invoke<boolean>('media_control_available'),
 
   // Built-in (on-device) LLM
   listBuiltinLlmModels: () => invoke<BuiltinLlmModel[]>('list_builtin_llm_models'),

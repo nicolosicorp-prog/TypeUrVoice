@@ -24,12 +24,24 @@ pub const INPUT_GUARD_SECS: f64 = 0.2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Config {
+    /// Knocks in a pattern. With `max_knocks` above it, any count in
+    /// `knocks..=max_knocks` is a pattern and `Pattern::knocks` says which.
     pub knocks: usize,
+    pub max_knocks: usize,
     pub sensitivity: KnockSensitivity,
+}
+
+impl Config {
+    /// Exactly `knocks` knocks.
+    pub fn exactly(knocks: usize, sensitivity: KnockSensitivity) -> Self {
+        Self { knocks, max_knocks: knocks, sensitivity }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pattern {
+    /// How many knocks.
+    pub knocks: usize,
     /// Sample time of the first and last knock, seconds.
     pub first: f64,
     pub last: f64,
@@ -60,6 +72,11 @@ const QUIET_BEFORE: f64 = 0.5;
 /// knock-knock.
 const MIN_CONFIRM: f64 = 0.35;
 const CONFIRM_FACTOR: f64 = 1.3;
+/// A pattern that one more knock would extend (double when triples count
+/// too) waits a little longer, so a third knock in an uneven rhythm still
+/// lands inside the wait.
+const MIN_CONFIRM_EXTENDABLE: f64 = 0.45;
+const CONFIRM_FACTOR_EXTENDABLE: f64 = 1.7;
 
 /// Minimum high-passed impact, g. Recorded knuckle knocks peak at
 /// 0.019–0.042 g in this band; a still laptop stays under ~0.006 g.
@@ -122,6 +139,7 @@ impl HighPass {
 
 pub struct Detector {
     knocks: usize,
+    max_knocks: usize,
     threshold: f32,
     filters: Option<[HighPass; 3]>,
     /// Trigger time and running peak of the impact being held.
@@ -141,6 +159,7 @@ impl Detector {
     pub fn new(config: Config) -> Self {
         Self {
             knocks: config.knocks.max(1),
+            max_knocks: config.max_knocks.max(config.knocks.max(1)),
             threshold: threshold(config.sensitivity),
             filters: None,
             holding: None,
@@ -184,6 +203,7 @@ impl Detector {
                 // QUIET_BEFORE (counted from the last knock) keeps the next
                 // pattern from starting straight away.
                 self.armed = None;
+                self.pending.clear();
                 return Some(pattern);
             }
         }
@@ -206,10 +226,19 @@ impl Detector {
         self.last_impact = t;
 
         // Anything hitting during the confirmation wait means this was not
-        // a clean pattern.
-        if self.armed.take().is_some() || !accept(t) {
+        // a clean pattern — unless it is the next knock of a longer one
+        // (`pending` still holds the armed pattern's knocks then).
+        let armed = self.armed.take();
+        if !accept(t) {
             self.pending.clear();
             return;
+        }
+        if let Some((p, _)) = armed {
+            let extends = p.knocks < self.max_knocks && self.pending.len() == p.knocks && t - p.last <= MAX_GAP;
+            if !extends {
+                self.pending.clear();
+                return;
+            }
         }
         if self.pending.last().is_some_and(|&(p, _)| t - p > MAX_GAP) {
             self.pending.clear();
@@ -222,10 +251,19 @@ impl Detector {
             return;
         }
         let (lo, hi) = self.pending.iter().fold((f32::MAX, 0f32), |(lo, hi), p| (lo.min(p.1), hi.max(p.1)));
+        let knocks = self.pending.len();
         if hi <= lo * MAX_PEAK_RATIO {
             let longest_gap = self.pending.windows(2).map(|w| w[1].0 - w[0].0).fold(0.0, f64::max);
-            let fire_at = t + (CONFIRM_FACTOR * longest_gap).max(MIN_CONFIRM);
-            self.armed = Some((Pattern { first: self.pending[0].0, last: t, peak_g: hi }, fire_at));
+            let extendable = knocks < self.max_knocks;
+            let wait = if extendable {
+                (CONFIRM_FACTOR_EXTENDABLE * longest_gap).max(MIN_CONFIRM_EXTENDABLE)
+            } else {
+                (CONFIRM_FACTOR * longest_gap).max(MIN_CONFIRM)
+            };
+            self.armed = Some((Pattern { knocks, first: self.pending[0].0, last: t, peak_g: hi }, t + wait));
+            if extendable {
+                return; // keep the knocks: a next one may extend the pattern
+            }
         }
         self.pending.clear();
     }
@@ -276,7 +314,7 @@ mod tests {
     }
 
     fn double(s: KnockSensitivity) -> Config {
-        Config { knocks: 2, sensitivity: s }
+        Config::exactly(2, s)
     }
 
     #[test]
@@ -328,7 +366,7 @@ mod tests {
 
     #[test]
     fn triple_needs_three() {
-        let triple = Config { knocks: 3, sensitivity: KnockSensitivity::Medium };
+        let triple = Config::exactly(3, KnockSensitivity::Medium);
         assert!(run(triple, &[(1.0, 0.04), (1.2, 0.04)], 3.0, |_| true).is_empty());
         assert_eq!(run(triple, &[(1.0, 0.04), (1.2, 0.04), (1.4, 0.04)], 3.0, |_| true).len(), 1);
     }
@@ -337,6 +375,33 @@ mod tests {
     fn triple_knock_in_double_mode_does_nothing() {
         let p = run(double(KnockSensitivity::Medium), &[(1.0, 0.04), (1.2, 0.04), (1.4, 0.04)], 3.0, |_| true);
         assert!(p.is_empty(), "{p:?}");
+    }
+
+    fn double_or_triple() -> Config {
+        Config { knocks: 2, max_knocks: 3, sensitivity: KnockSensitivity::Medium }
+    }
+
+    #[test]
+    fn split_mode_tells_double_from_triple() {
+        let p = run(double_or_triple(), &[(1.0, 0.04), (1.17, 0.035)], 3.0, |_| true);
+        assert_eq!(p.iter().map(|p| p.knocks).collect::<Vec<_>>(), vec![2], "{p:?}");
+        let p = run(double_or_triple(), &[(1.0, 0.04), (1.17, 0.035), (1.34, 0.04)], 3.0, |_| true);
+        assert_eq!(p.iter().map(|p| p.knocks).collect::<Vec<_>>(), vec![3], "{p:?}");
+        assert!((p[0].first - 1.0).abs() < 0.01 && (p[0].last - 1.34).abs() < 0.01, "{p:?}");
+        // Uneven rhythm: third knock a bit slower than the second.
+        let p = run(double_or_triple(), &[(1.0, 0.04), (1.2, 0.04), (1.5, 0.04)], 3.0, |_| true);
+        assert_eq!(p.iter().map(|p| p.knocks).collect::<Vec<_>>(), vec![3], "{p:?}");
+    }
+
+    #[test]
+    fn split_mode_rejects_four_knocks_and_steady_bumps() {
+        let p = run(double_or_triple(), &[(1.0, 0.04), (1.2, 0.04), (1.4, 0.04), (1.6, 0.04)], 3.0, |_| true);
+        assert!(p.is_empty(), "{p:?}");
+        for spacing in [0.15, 0.25, 0.4, 0.55] {
+            let knocks: Vec<_> = (0..12).map(|i| (1.0 + i as f64 * spacing, 0.04)).collect();
+            let p = run(double_or_triple(), &knocks, 8.0, |_| true);
+            assert!(p.is_empty(), "spacing {spacing}: {p:?}");
+        }
     }
 
     #[test]
@@ -392,8 +457,8 @@ mod tests {
             }
         }
         for sensitivity in [KnockSensitivity::High, KnockSensitivity::Medium, KnockSensitivity::Low] {
-            for knocks in [2, 3] {
-                let mut d = Detector::new(Config { knocks, sensitivity });
+            for (knocks, max_knocks) in [(2, 2), (3, 3), (2, 3)] {
+                let mut d = Detector::new(Config { knocks, max_knocks, sensitivity });
                 let fired: Vec<Pattern> = samples
                     .iter()
                     .filter_map(|s| d.push(s[0], s[1] as f32, s[2] as f32, s[3] as f32, |_| true))
@@ -403,7 +468,8 @@ mod tests {
                 for (name, a, b) in &phases {
                     row += &format!(" {}={}", name, fired.iter().filter(|p| (*a..*b).contains(&p.last)).count());
                 }
-                println!("{:?} x{}: total={} {}", sensitivity, knocks, fired.len(), row);
+                let kinds: Vec<usize> = fired.iter().map(|p| p.knocks).collect();
+                println!("{:?} x{}-{}: total={} {} kinds={:?}", sensitivity, knocks, max_knocks, fired.len(), row, kinds);
             }
         }
     }

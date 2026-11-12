@@ -19,6 +19,7 @@ pub fn record_until_stopped(
     sample_rate_out: Arc<Mutex<u32>>,
     stop_flag: Arc<AtomicBool>,
     device_name: Option<String>,
+    on_live: Box<dyn FnOnce() + Send>,
 ) -> Result<()> {
     let host = cpal::default_host();
     let device = pick_device(&host, device_name.as_deref())
@@ -30,9 +31,7 @@ pub fn record_until_stopped(
     // Use poison-safe locking everywhere — a poisoned mutex must never crash the app
     *sample_rate_out.lock().unwrap_or_else(|e| e.into_inner()) = sample_rate;
 
-    {
-        samples_out.lock().unwrap_or_else(|e| e.into_inner()).clear();
-    }
+    // No clear(): each recording gets a fresh, empty buffer.
 
     let channels = config.channels() as usize;
     let samples_clone = Arc::clone(&samples_out);
@@ -72,9 +71,16 @@ pub fn record_until_stopped(
 
     stream.play()?;
 
-    // Block thread until stop signal or timeout
+    // Block thread until stop signal or timeout. `on_live` fires once the
+    // first audio arrives — the moment the user can actually be heard.
     let start = Instant::now();
+    let mut on_live = Some(on_live);
     while !stop_flag.load(Ordering::Relaxed) {
+        if on_live.is_some() && !samples_out.lock().unwrap_or_else(|e| e.into_inner()).is_empty() {
+            if let Some(f) = on_live.take() {
+                f();
+            }
+        }
         if start.elapsed().as_secs() >= MAX_RECORDING_SECS {
             eprintln!("[TypeUrVoice] Recording hit {}s timeout — stopping", MAX_RECORDING_SECS);
             stop_flag.store(true, Ordering::Relaxed);

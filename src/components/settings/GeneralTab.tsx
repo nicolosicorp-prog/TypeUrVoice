@@ -6,7 +6,7 @@ import { Section } from '../ui/Section'
 import { RadioCard, RadioCardGroup } from '../ui/RadioCard'
 import { LANGUAGES } from '../../lib/constants'
 import { api } from '../../lib/tauri'
-import type { KnockPattern, KnockSensitivity, Settings } from '../../types'
+import type { KnockLanguage, KnockPattern, KnockSensitivity, MediaWhileRecording, Settings } from '../../types'
 
 interface Props {
   settings: Settings
@@ -165,12 +165,16 @@ export function GeneralTab({ settings, onUpdate }: Props) {
                 ? 'Needs Auto-paste (Settings → Output).'
                 : settings.summaryEnabled
                   ? 'Paused while Summary is on — a summary needs the whole dictation.'
+                  : settings.outputMode === 'markdown'
+                    ? 'Paused in Markdown mode — the document is built from the whole dictation.'
                   : 'Each finished sentence goes into your text field (cleaned up and translated) while you keep talking. The rest follows when you stop.'
           }
           checked={settings.streamTyping}
           onChange={val => onUpdate({ streamTyping: val })}
         />
       </Section>
+
+      <MediaSection settings={settings} onUpdate={onUpdate} />
 
       <KnockSection settings={settings} onUpdate={onUpdate} />
 
@@ -194,6 +198,41 @@ export function GeneralTab({ settings, onUpdate }: Props) {
   )
 }
 
+const MEDIA_HINTS: Record<MediaWhileRecording, string> = {
+  off: 'Sound keeps playing while you dictate.',
+  mute: 'Mutes your speakers or headphones while you record and unmutes them when you stop. Videos keep playing silently.',
+  pause: 'If something is playing — a video, music, a podcast — it pauses while you record and resumes when you stop. Uses the Play/Pause key, so it needs Accessibility (like auto-paste).',
+}
+
+/** Only rendered where it's implemented (macOS). */
+function MediaSection({ settings, onUpdate }: Props) {
+  const [available, setAvailable] = useState(false)
+
+  useEffect(() => {
+    api.mediaControlAvailable()
+      .then(setAvailable)
+      .catch(() => setAvailable(false))
+  }, [])
+
+  if (!available) return null
+
+  return (
+    <Section title="Sound While Recording">
+      <Select
+        label="When recording starts"
+        value={settings.mediaWhileRecording}
+        onChange={e => onUpdate({ mediaWhileRecording: e.target.value as MediaWhileRecording })}
+        options={[
+          { value: 'off', label: 'Do nothing' },
+          { value: 'pause', label: 'Pause videos and music' },
+          { value: 'mute', label: 'Mute sound' },
+        ]}
+        description={MEDIA_HINTS[settings.mediaWhileRecording]}
+      />
+    </Section>
+  )
+}
+
 /** Only rendered on Macs with the built-in accelerometer (Apple Silicon MacBooks). */
 function KnockSection({ settings, onUpdate }: Props) {
   const [available, setAvailable] = useState(false)
@@ -206,17 +245,44 @@ function KnockSection({ settings, onUpdate }: Props) {
 
   if (!available) return null
 
+  const langName = (code: string) => LANGUAGES.find(l => l.code === code)?.label ?? code
+  const primary = langName(settings.primaryLanguage)
+  const secondary = langName(settings.secondaryLanguage)
+  const split = settings.knockLanguage === 'split'
+  const knockLangHints: Record<KnockLanguage, string> = {
+    primary: `Records in ${primary}. Speaking another language gives a ${primary} result (translated).`,
+    secondary: `Records in ${secondary}. Speaking another language gives a ${secondary} result (translated).`,
+    split: `Knock twice for ${primary}, three times for ${secondary}. Either pattern stops the recording. After a double knock it waits a moment for a third, so recording starts about 0.5 s after your last knock.`,
+    auto: 'Whatever language you speak is what you get — no translation. Short clips can be misdetected (Czech vs Slovak especially); pick a fixed language if that happens.',
+  }
+
   return (
     <Section title="Knock to Record">
       <Toggle
         label="Knock on the laptop to start and stop recording"
-        description="Knock on the case, no keys needed. Records in your primary shortcut's language. Typing and clicking are ignored."
+        description="Knock on the case, no keys needed. Typing and clicking are ignored."
         checked={settings.knockEnabled}
         onChange={val => onUpdate({ knockEnabled: val })}
       />
       {settings.knockEnabled && (
+        <div style={{ marginTop: 8 }}>
+          <Select
+            label="Language"
+            value={settings.knockLanguage}
+            onChange={e => onUpdate({ knockLanguage: e.target.value as KnockLanguage })}
+            options={[
+              { value: 'primary', label: `${primary} (primary shortcut)` },
+              { value: 'secondary', label: `${secondary} (secondary shortcut)` },
+              { value: 'split', label: `Double knock = ${primary}, triple knock = ${secondary}` },
+              { value: 'auto', label: 'Detect the language I speak' },
+            ]}
+            description={knockLangHints[settings.knockLanguage]}
+          />
+        </div>
+      )}
+      {settings.knockEnabled && (
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 8 }}>
-          <div style={{ flex: 1 }}>
+          {!split && <div style={{ flex: 1 }}>
             <Select
               label="Knocks"
               value={settings.knockPattern}
@@ -227,7 +293,7 @@ function KnockSection({ settings, onUpdate }: Props) {
               ]}
               description="Use Triple if another app already reacts to double knocks."
             />
-          </div>
+          </div>}
           <div style={{ flex: 1 }}>
             <Select
               label="Sensitivity"

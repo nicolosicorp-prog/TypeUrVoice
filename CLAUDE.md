@@ -1264,3 +1264,80 @@ User reports: Czech → English translations flipped meaning ("u sebe" → "scat
 
 ### Fix: "No such file or directory (os error 2)" after a model download
 Switching Settings tabs unmounts the download panels, which reset `downloading` and re-enabled the Download button mid-download; a second click ran a second download into the same `<file>.partial`. The first one verified and renamed it, then the second failed on the missing `.partial` (the model itself was fine — SHA-256 matched). Fix: `DownloadSlot` in `lib.rs` (static in-flight list keyed `whisper:<key>` / `llm:<key>`, released on Drop) makes a duplicate request a no-op, and both panels re-attach from `*-download-progress` events. crash.log: `Download of llm:<key> already running — ignoring the second request`.
+
+---
+
+## Recording Bubble Fix, Hold-Key Watch, Sound While Recording, Markdown Mode (November 2026, branch `nov-2026-model-refresh`)
+
+User report: during a 76 s dictation the bubble vanished ("didn't know if it was still recording"), and once a recording seemed to stop mid-sentence. crash.log/History showed every pipeline completing, so both came from the UI/hotkey side.
+
+### 1. Bubble vanished after 60 s (`RecordingOverlay.tsx`)
+- Root cause: a "stuck state" safety timer reset the overlay to idle after 60 s in *any* non-idle state — including Recording. Every dictation over a minute lost its indicator while audio kept recording.
+- Fix: safety only in Processing, 380 s (backend pipeline timeout is 360 s and always ends in done/error). The timer turns orange in the last 30 s of the 5-min cap and shows "5:00 max reached".
+
+### 2. Hold mode follows the physical key (`hold_key.rs`, `lib.rs::on_shortcut`)
+- Carbon hot-key events can report Released while the key is still held (cuts the dictation) or lose the release (secure input — recording never stops).
+- `hold_key::key_code(shortcut)` maps the parsed shortcut's `Code` to a mac virtual key code; `is_down()` = `CGEventSourceKeyState(HIDSystemState)` (no permission needed).
+- Released while the key reads down ⇒ ignored. `spawn_hold_watcher` (per recording, keyed on `recording_started_at`) stops the recording when the key has read up for 400 ms with no release event. It only runs if the key reads down 150 ms after the press, so a key-state API that can't see keys falls back to the old event-only behaviour.
+- `start_audio_capture` now returns `Option<Instant>` (start time; `None` if already recording).
+- Note: the shortcut parser doesn't accept `Meta+…` (`Super+…` works) — pre-existing; the GeneralTab capture writes `Meta`.
+- crash.log: `Hold: release event while the key is still held — ignored`, `Hold: key released without a release event — stopping`.
+
+### 3. Sound while recording (`media.rs`, setting `mediaWhileRecording`: off|mute|pause, default off)
+- `media::quiet` in `start_audio_capture` (before the mic opens), `media::restore` right after the stop transition and on `RunEvent::Exit`. Only what quiet changed is undone (static `UNDO`).
+- Mute: CoreAudio `kAudioDevicePropertyMute` on the default output (main element, else channels 1–2); already-muted elements are left alone; unmutes the same device id even if the default changed.
+- Pause: only if `kAudioDevicePropertyDeviceIsRunningSomewhere` on the default output (pressing Play/Pause with nothing playing would start the last player). Posts NX_KEYTYPE_PLAY as an `NSSystemDefined` event (raw objc runtime FFI → `CGEventPost`), again on restore. Needs Accessibility; without it falls back to Mute. Known limit: a browser can keep the device running a few seconds after the user pauses — then the key would resume it (documented in Help).
+- macOS only; `media_control_available` command hides the UI elsewhere.
+- Probe (read-only): `cargo test --lib media_probe -- --ignored --nocapture`.
+- crash.log: `Media: sound muted while recording` / `unmuted`, `Media: playback paused while recording` / `resumed`, `Media: pausing needs Accessibility permission — muting instead`.
+
+### 4. Markdown output mode (`OutputMode::Markdown`, `cleanup::markdown`)
+- Dictation → structured Markdown, following spoken meta-instructions ("make it a list", "in English") without writing them into the text; technical terms stay in their usual (English) form.
+- Settings: `markdownTemplate` (free text, empty ⇒ model picks; UI presets: AI-agent task, meeting notes, bug report), `markdownLanguage` ("auto" ⇒ translation target, which the shortcut-language switch sets, else spoken).
+- Writes directly in the output language; the translation step is skipped for this mode (one LLM call). Overrides an active occupation profile's prompt (its dictionary still applies). Disables stream typing. Temperature 0.2, budget `token_budget_for(raw, 2.0)`.
+- Learning shows the transcript as FINAL for markdown entries (restructured output says nothing about recognition).
+- `strip_code_fence` now only strips fences tagged ""/markdown/md/text/plaintext, so a document that starts with a real code block survives.
+- Tray: Output Mode → Markdown.
+- Replay: `TYPEURVOICE_LLM_URL=http://127.0.0.1:8090 TYPEURVOICE_HISTORY_DB=… TYPEURVOICE_IDS=77,75 [TYPEURVOICE_MD_LANG=en] [TYPEURVOICE_MD_TEMPLATE='## Goal\n## Requirements'] cargo test --release --lib markdown_history -- --ignored --nocapture`. With Gemma 4 E4B: 2–3.5 s per dictation, correct English, sensible structure; "nahrávání" still sometimes becomes "upload" (recording/upload ambiguity, as in translation).
+- crash.log: `Markdown: cs → en`.
+
+### 5. Knock language (`Settings::knock_language`: primary|secondary|split|auto, default primary)
+- User report: knocking always recorded in the primary language — English speech came out Czech (by design: a forced language is the output language, the spoken-language check translates into it).
+- `split`: detector listens for 2 *and* 3 knocks (`Config { knocks: 2, max_knocks: 3 }`); `Pattern::knocks` says which. A double that a third knock could extend keeps its knocks in `pending` and waits `max(1.7 × gap, 0.45 s)` (vs `max(1.3 × gap, 0.35 s)`); a third knock inside the wait and ≤ MAX_GAP re-arms as a triple; a 4th cancels. `knock_pattern` is ignored in split mode.
+- `auto`: passes `"auto"` as the recording language → Whisper detects, no translation.
+- `on_knock(app, since_first, knocks)` picks the language; any pattern stops.
+- Tests: `split_mode_tells_double_from_triple`, `split_mode_rejects_four_knocks_and_steady_bumps` (synthetic). Live: `TYPEURVOICE_KNOCK_SPLIT=1 cargo test --release --lib knock_live -- --ignored --nocapture`. Not re-tuned on a real calibration recording (none kept).
+- crash.log: `Knock: listening (2–3 knocks, …)`, `Knock: starting recording (3 knocks, language en)`.
+
+### 6. First word lost (Nov 2026)
+
+**First word lost.** The bubble appeared before the mic opened: `start_audio_capture` emitted `recording` + `show_overlay` first and spawned the cpal thread last (after live preview / stream / LLM warm-up); device lookup + stream start take ~100 ms here (measured 86–112 ms), Bluetooth up to ~1 s. Now:
+- the mic thread starts first; the bubble + `recording` event come from `announce_recording`, called on the first audio (`record_until_stopped`'s `on_live` callback) or after a 1 s fallback. crash.log `Timing: mic live after Xms` / `not delivering audio`.
+- `run_pipeline` puts 0.25 s of silence in front of the audio (Whisper drops a first word that starts at sample 0).
+- `record_until_stopped` no longer `clear()`s the buffer (fresh per session anyway).
+
+**Auto language was English.** `transcribe_segments_blocking` never called `set_language` when no language was forced, so whisper.cpp used its default `"en"` — "auto" (Settings source language, knock "Detect") translated Czech to English. Now `set_language(Some("auto"))`. Verified: Czech clip → `cs p=0.997`.
+
+**Mute recovery.** `media` writes `media_mute.txt` (device + elements) while it has the Mac muted; `media::recover()` at the top of `run()` unmutes if a previous run crashed / was force-quit mid-recording (happened once during an app swap). crash.log `Media: unmuted the sound a previous run left muted`.
+
+**Wake phrase ("Hey MacBook") — built, then removed at the user's request (not reliable enough).** Approach for the record: always-open cpal stream + energy VAD + Whisper on ≤ 2.5 s utterance starts + fuzzy prefix match. Findings: turbo-q5 costs ~0.62 s per check whatever the clip length (30 s encoder window; `audio_ctx` shortening garbles turbo; reusing WhisperState doesn't help); small-q5 ~0.14 s and fine on real words, weak on invented names; prompting Whisper with the phrase makes it hallucinate the phrase (false triggers); auto language detect doubles the cost. In real use it still felt slow/unreliable. A dedicated keyword-spotting model would be the way if this comes back. Leftover settings keys `wakeEnabled`, `wakePhrase`, … in existing settings.json files are ignored.
+
+---
+
+## Windows port status — what the Windows build gets from the Nov 12 2026 work
+
+Merge GitHub `main` into the Windows branch (`git fetch origin && git merge origin/main`); conflicts, if any, will mostly be in `src-tauri/src/lib.rs` and `state.rs`. Settings are additive (struct-level `#[serde(default)]`), so old settings.json files load.
+
+Works on Windows as-is (platform-independent code):
+- Recording bubble no longer vanishes after 60 s; 5-min cap warning (`RecordingOverlay.tsx`).
+- Bubble appears only when the mic delivers audio + 0.25 s lead-in silence for Whisper (first word no longer lost).
+- Local engine "auto" language really auto-detects (was silently English).
+- Markdown output mode (+ tray item, template presets, language choice), code-fence strip tightened.
+- Knock language setting (UI hidden on Windows — no accelerometer), detector changes are pure Rust.
+
+macOS-only, with no-op stand-ins on Windows (compiles; feature simply absent / hidden in UI):
+- **Sound while recording** (`media.rs`, `media_control_available` → false hides the UI). Windows implementation sketch: mute via `IAudioEndpointVolume::GetMute/SetMute` on the default render endpoint (`windows` crate, `Win32_Media_Audio_Endpoints`); "is something playing" via `IAudioMeterInformation::GetPeakValue` (> ~0.001 over a few reads) and pause/resume via `SendInput` with `VK_MEDIA_PLAY_PAUSE`. Keep the same contract: `quiet` before the mic opens, `restore` in the stop path and on Exit, persist the mute marker for `recover()`, only undo what we changed. Then return true from `is_available` on Windows.
+- **Hold mode follows the physical key** (`hold_key.rs`): `is_down` returns false elsewhere, so Hold mode trusts the hot-key events as before. Windows: `GetAsyncKeyState(vk) & 0x8000 != 0` (user32), mapping `keyboard_types::Code` names to VK codes (`KeyQ` → 0x51, `Space` → 0x20, `F5` → 0x74 …) in a `win_key_code` next to `mac_key_code`.
+- Mute recovery marker — part of media.
+
+Not verified: no Windows toolchain on the Mac (MSVC C deps), so the Windows compile was reviewed, not run. Build it on Windows after merging.

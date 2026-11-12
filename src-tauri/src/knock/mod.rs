@@ -1,5 +1,7 @@
 //! Knock-to-record: a double (or triple) knock on the MacBook chassis toggles
-//! recording, like pressing the primary shortcut in Toggle mode.
+//! recording, like pressing a shortcut in Toggle mode. With
+//! `KnockLanguage::Split` both are listened for: double = primary language,
+//! triple = secondary.
 //!
 //! `sensor` streams the built-in accelerometer on a dedicated thread,
 //! `detector` turns samples into knock patterns, and impacts that coincide
@@ -36,9 +38,13 @@ pub fn is_available() -> bool {
 /// Cheap when nothing changed — called on every settings save.
 pub fn sync(app: &AppHandle) {
     let wanted = crate::with_settings(app, |s| {
-        s.knock_enabled.then(|| detector::Config {
-            knocks: s.knock_pattern.count(),
-            sensitivity: s.knock_sensitivity,
+        s.knock_enabled.then(|| match s.knock_language {
+            crate::state::KnockLanguage::Split => detector::Config {
+                knocks: 2,
+                max_knocks: 3,
+                sensitivity: s.knock_sensitivity,
+            },
+            _ => detector::Config::exactly(s.knock_pattern.count(), s.knock_sensitivity),
         })
     });
     let listener = app.state::<KnockListener>();
@@ -81,13 +87,14 @@ fn start(app: AppHandle, config: detector::Config) -> Option<Running> {
                 if let Some(pattern) = detector.push(t, x, y, z, not_typing) {
                     crate::log_to_file(&format!(
                         "Knock: {} knocks over {}ms, peak {:.2}g",
-                        config.knocks,
+                        pattern.knocks,
                         ((pattern.last - pattern.first) * 1000.0) as u32,
                         pattern.peak_g,
                     ));
                     let since_first = started.elapsed().saturating_sub(Duration::from_secs_f64(pattern.first));
                     let app = app.clone();
-                    std::thread::spawn(move || crate::on_knock(&app, since_first));
+                    let knocks = pattern.knocks;
+                    std::thread::spawn(move || crate::on_knock(&app, since_first, knocks));
                 }
             });
             match result {
@@ -98,8 +105,8 @@ fn start(app: AppHandle, config: detector::Config) -> Option<Running> {
     match spawned {
         Ok(_) => {
             crate::log_to_file(&format!(
-                "Knock: listening ({} knocks, {:?} sensitivity)",
-                config.knocks, config.sensitivity
+                "Knock: listening ({}–{} knocks, {:?} sensitivity)",
+                config.knocks, config.max_knocks, config.sensitivity
             ));
             Some(Running { config, stop })
         }
@@ -133,7 +140,9 @@ mod tests {
             Ok("low") => KnockSensitivity::Low,
             _ => KnockSensitivity::Medium,
         };
+        // TYPEURVOICE_KNOCK_TRIPLE=1: triples only; TYPEURVOICE_KNOCK_SPLIT=1: doubles and triples.
         let knocks = if std::env::var("TYPEURVOICE_KNOCK_TRIPLE").is_ok() { 3 } else { 2 };
+        let max_knocks = if std::env::var("TYPEURVOICE_KNOCK_SPLIT").is_ok() { 3 } else { knocks };
         println!("\nListening for {secs} s — {knocks} knocks, {sensitivity:?} sensitivity. Ctrl-C to stop.\n");
         let stop = Arc::new(AtomicBool::new(false));
         let timer_stop = Arc::clone(&stop);
@@ -142,7 +151,7 @@ mod tests {
             timer_stop.store(true, Ordering::Relaxed);
         });
         let started = std::time::Instant::now();
-        let mut detector = detector::Detector::new(detector::Config { knocks, sensitivity });
+        let mut detector = detector::Detector::new(detector::Config { knocks, max_knocks, sensitivity });
         let mut count = 0;
         sensor::run(stop, |t, x, y, z| {
             let accept = |impact_t: f64| {
@@ -153,8 +162,8 @@ mod tests {
             };
             if let Some(p) = detector.push(t, x, y, z, accept) {
                 count += 1;
-                println!(">>> {:7.2}s KNOCK PATTERN #{count}  ({} ms between first and last, peak {:.3} g)",
-                    p.last, ((p.last - p.first) * 1000.0) as u32, p.peak_g);
+                println!(">>> {:7.2}s KNOCK PATTERN #{count}: {} knocks ({} ms between first and last, peak {:.3} g)",
+                    p.last, p.knocks, ((p.last - p.first) * 1000.0) as u32, p.peak_g);
             }
         })
         .expect("sensor");

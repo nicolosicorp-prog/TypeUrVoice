@@ -34,10 +34,16 @@ fn strip_code_fence(s: &str) -> String {
     if !trimmed.starts_with("```") {
         return s.to_string();
     }
-    let after_open = match trimmed.find('\n') {
-        Some(idx) => &trimmed[idx + 1..],
+    let (open_line, after_open) = match trimmed.find('\n') {
+        Some(idx) => (&trimmed[..idx], &trimmed[idx + 1..]),
         None => return s.to_string(),
     };
+    // A Markdown document (Markdown mode) may legitimately start with a
+    // code block — only a fence that wraps prose is stripped.
+    let tag = open_line.trim_start_matches('`').trim().to_ascii_lowercase();
+    if !matches!(tag.as_str(), "" | "markdown" | "md" | "text" | "plaintext") {
+        return s.to_string();
+    }
     let stripped = match after_open.rfind("```") {
         Some(idx) => after_open[..idx].trim_end(),
         None => after_open,

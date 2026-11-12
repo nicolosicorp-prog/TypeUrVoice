@@ -51,7 +51,13 @@ export function HelpTab() {
         </Field>
         <Field name="Recording mode — Hold to Record">
           Hold the shortcut while you speak, release to stop. Best for short messages.
-          Has a built-in 600 ms minimum so quick taps don't get cut off.
+          Has a built-in 600 ms minimum so quick taps don't get cut off. The recording
+          bubble appears the moment the microphone is actually hearing you — start
+          talking when you see it. The recording
+          follows the key itself: it keeps going as long as the key is down, even if
+          macOS reports a release too early, and stops when you let go even if the
+          release report never arrives. Recordings are capped at 5 minutes — the
+          timer turns orange in the last 30 seconds.
         </Field>
         <Field name="Recording mode — Toggle">
           Press once to start, press again to stop. Best for longer dictation where
@@ -77,11 +83,28 @@ export function HelpTab() {
           typed can't be corrected afterwards, so for important text the single paste
           at the end is the most accurate.
         </Field>
+        <Field name="Sound While Recording">
+          <B>Pause videos and music</B>: if something is playing when you start
+          recording — a YouTube video, Spotify, a podcast — TypeUrVoice presses the
+          Play/Pause key, and presses it again when you stop, so it continues where it
+          was. It only does this when an app is actually sending sound to your
+          speakers, so a paused player is never started. A browser can keep reporting
+          sound for a few seconds after you pause a video yourself; if a video ever
+          starts instead of stopping, use Mute. Needs Accessibility, like auto-paste.
+          <br /><B>Mute sound</B>: mutes your speakers or headphones while you record and
+          unmutes them when you stop (videos keep playing silently). If they were
+          already muted, they stay muted. macOS only.
+        </Field>
         <Field name="Knock to Record">
           On Apple Silicon MacBooks you can start a recording by knocking on the laptop
-          case: knock twice, speak, knock twice again. It works like Toggle mode with
-          your primary shortcut's language, and the stopping knocks are cut out of the
-          audio. Choose <B>Triple knock</B> if another app (such as Knock) already
+          case: knock twice, speak, knock twice again. It works like Toggle mode, and
+          the stopping knocks are cut out of the audio. <B>Language</B> picks what a
+          knock records in: your primary or secondary shortcut's language (speak
+          something else and the result is translated into it, just like the
+          shortcut), <B>double knock = primary, triple knock = secondary</B>, or
+          <B> Detect the language I speak</B> (no translation; short clips can be
+          misdetected). In the double/triple mode it waits a moment after two knocks
+          for a possible third, and either pattern stops the recording. Choose <B>Triple knock</B> if another app (such as Knock) already
           reacts to double knocks. Bumps while you type or click are ignored. Raise
           <B> Sensitivity</B> if gentle knocks are missed, lower it if recording
           starts on its own. The section only appears on Macs with the motion sensor
@@ -291,6 +314,24 @@ export function HelpTab() {
           Rewrites your speech into professional prose. Removes filler words and
           restructures sentences. Best for emails and documents — but it <I>will</I>
           change your wording.
+        </Field>
+        <Field name="Output mode — Markdown">
+          Turns what you say into a structured document — headings, bullet and
+          numbered lists, <Code>code</Code> for commands and file names — ready to
+          paste into a chat with an AI assistant, an issue tracker or notes. Talk
+          normally and say what you want from the result as you go: <I>“make it a
+          list”</I>, <I>“add a section about testing”</I>, <I>“leave the prices
+          out”</I>. Those instructions are followed, not written into the text.
+          Technical terms (design, landing page, API…) stay in English.
+          <br /><B>Write the document in</B>: by default the language of the shortcut
+          you pressed — dictate in Czech on your English shortcut and you get an
+          English document in one step. Pick a language to always use that one.
+          <br /><B>Structure</B>: leave empty and the AI picks headings that fit, or
+          write your own (one per line, e.g. <Code>## Goal</Code>) or start from a
+          preset. Sections you say nothing about are left out. The whole dictation is
+          processed at once, so <B>Type sentences while speaking</B> pauses in this
+          mode. Uses the text processor from the Engine tab; the built-in Gemma 4 E4B
+          or an online model gives the best structure.
         </Field>
         <Field name="Output mode — Custom (profiles)">
           Save as many named prompt profiles as you want — for example

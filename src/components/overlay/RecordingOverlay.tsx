@@ -39,10 +39,14 @@ export function RecordingOverlay() {
   useTauriEvent<string>('partial-transcript', (text) => { setLiveText(text) })
   useTauriEvent<string>('final-transcript', (text) => { finalRef.current = text; setFinalText(text) })
 
-  // Safety: if state is stuck non-idle for >60s, force reset
+  // Safety: if Processing never reports back, hide the bubble. Only for
+  // Processing — a recording may legitimately run for minutes, and the
+  // bubble is the user's only sign that it still is (this used to be a flat
+  // 60 s for every state, which hid the bubble mid-dictation). 380 s covers
+  // the backend's 360 s pipeline timeout, which always ends in done/error.
   useEffect(() => {
-    if (state === 'idle') return
-    const safety = setTimeout(() => setState('idle'), 60000)
+    if (state !== 'processing') return
+    const safety = setTimeout(() => setState('idle'), 380_000)
     return () => clearTimeout(safety)
   }, [state])
 
@@ -101,10 +105,13 @@ export function RecordingOverlay() {
               flexShrink: 0,
             }} />
             <span style={{
-              fontSize: 13, color: '#fff', fontWeight: 500,
+              fontSize: 13, fontWeight: 500,
+              // Recordings are capped at 5 min (audio/capture.rs) — warn
+              // in the last 30 s, then say the cap was reached.
+              color: elapsed >= MAX_RECORDING_SECS - 30 ? '#FF9F0A' : '#fff',
               fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em',
             }}>
-              {formatTime(elapsed)}
+              {elapsed >= MAX_RECORDING_SECS ? '5:00 max reached' : formatTime(elapsed)}
             </span>
             <Waveform />
           </>
@@ -161,6 +168,9 @@ export function RecordingOverlay() {
     </div>
   )
 }
+
+/** Matches MAX_RECORDING_SECS in src-tauri/src/audio/capture.rs. */
+const MAX_RECORDING_SECS = 300
 
 /** ~2 lines of 13px text in the 460px-wide bubble. */
 const LIVE_TAIL_CHARS = 110

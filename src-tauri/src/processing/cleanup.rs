@@ -54,6 +54,70 @@ pub async fn custom(
     super::gpt_complete(http, cfg, &system, text).await
 }
 
+/// Markdown mode: turn the dictation into a structured Markdown document in
+/// `output_language`, following instructions the speaker gave about the
+/// output while dictating, and filling `template` when one is set.
+#[allow(clippy::too_many_arguments)]
+pub async fn markdown(
+    http: &reqwest::Client,
+    text: &str,
+    cfg: &super::GptConfig,
+    spoken_language: &str,
+    output_language: &str,
+    template: &str,
+    dict_hint: Option<&str>,
+    speaker_hint: Option<&str>,
+) -> Result<String> {
+    let mut system = build_markdown_prompt(spoken_language, output_language, template);
+    append_hint(&mut system, dict_hint);
+    append_hint(&mut system, speaker_hint);
+    super::gpt_complete(http, cfg, &system, text).await
+}
+
+pub(super) fn build_markdown_prompt(spoken: &str, output: &str, template: &str) -> String {
+    let language_rule = if spoken == output {
+        format!("- Write the document in {output}. If the speaker explicitly asks for another language, use that one.\n")
+    } else {
+        format!(
+            "- Write the document in {output} — translate from {spoken}, by meaning, not word for word. \
+            If the speaker explicitly asks for another language, use that one.\n"
+        )
+    };
+    let mut prompt = format!(
+        "You turn a dictated voice transcript into a well-structured Markdown document.\n\n\
+        The transcript is in {spoken} and comes from speech recognition: it may contain misheard words, \
+        filler words, false starts, repetitions and self-corrections. Write what the speaker meant.\n\n\
+        While dictating, the speaker often says what they want from the output — for example \
+        \"make it a list\", \"write it in English\", \"add a section about testing\", \"leave the prices out\", \
+        \"this is a task for a developer\". Follow these instructions and do NOT include them in the document.\n\n\
+        Rules:\n\
+        {language_rule}\
+        - Keep technical terms, product and brand names, file names, commands and code identifiers in their \
+        usual form (usually English) — never translate or localise them, also when writing in another language.\n\
+        - Keep every fact, requirement, name and number the speaker gave. Do not invent content, add advice, \
+        or comment on the text.\n\
+        - Structure with Markdown: `##` headings for distinct topics, `-` bullet lists for items and requirements, \
+        numbered lists for steps or an order, **bold** only for key terms, `inline code` for commands, paths and \
+        identifiers. A short dictation needs no headings — a few bullets or a short paragraph is enough. \
+        No `#` title unless the speaker asks for one.\n"
+    );
+    let template = template.trim();
+    if !template.is_empty() {
+        prompt.push_str(
+            "- Use the structure below. Put what the speaker said under the matching heading, leave out \
+            headings the speaker said nothing about, and don't add headings of your own unless the speaker asks. \
+            Lines in the structure that describe a section are guidance for you, not text to copy.\n\
+            <structure>\n",
+        );
+        prompt.push_str(template);
+        prompt.push_str("\n</structure>\n");
+    }
+    prompt.push_str(
+        "- Output ONLY the Markdown document — no preamble, no closing remarks, and no code fence around the whole document.",
+    );
+    prompt
+}
+
 /// Apply a built-in occupation profile (Lékařská zpráva, Pismo procesowe, etc.).
 /// The profile's `prompt` already contains the full system prompt — code-switching
 /// rule, preserve list inlined, occupation-specific structure. We append the

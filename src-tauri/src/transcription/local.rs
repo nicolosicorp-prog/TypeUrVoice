@@ -149,9 +149,9 @@ pub fn transcribe_segments_blocking(
     let spoken = requested
         .filter(|_| check_language)
         .and_then(|req| spoken_language_if_different(&mut state, &samples_16k, req, threads));
-    if let Some(lang) = spoken.as_deref().or(requested) {
-        params.set_language(Some(lang));
-    }
+    // No language ⇒ detect. Leaving it unset would mean whisper.cpp's
+    // default, "en" — Czech speech came out translated into English.
+    params.set_language(Some(spoken.as_deref().or(requested).unwrap_or("auto")));
     // Names and terms from the dictionary + learned profile bias the
     // decoder towards spelling them right.
     if let Some(v) = vocabulary.filter(|v| !v.trim().is_empty()) {

@@ -73,6 +73,12 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, settings: &crate::state::Settings)
         true, None::<&str>,
     )?;
 
+    let mode_markdown = MenuItem::with_id(
+        app, "mode_markdown",
+        if current == "markdown" { "✓ Markdown" } else { "  Markdown" },
+        true, None::<&str>,
+    )?;
+
     // Custom: when there are profiles, expose them as a sub-submenu so the
     // user can switch profile + activate Custom mode in one click. With zero
     // profiles, fall back to a flat menu item that just selects Custom mode
@@ -107,6 +113,7 @@ fn build_menu<R: Runtime>(app: &AppHandle<R>, settings: &crate::state::Settings)
             &mode_raw as &dyn tauri::menu::IsMenuItem<R>,
             &mode_clean,
             &mode_polished,
+            &mode_markdown,
             custom_entry.as_ref(),
         ],
     )?;
@@ -183,12 +190,13 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
                 let _ = w.emit("settings-changed", ());
             }
         }
-        "mode_raw" | "mode_clean" | "mode_polished" | "mode_custom" => {
+        "mode_raw" | "mode_clean" | "mode_polished" | "mode_markdown" | "mode_custom" => {
             let mode = id.trim_start_matches("mode_");
             let new_mode = match mode {
                 "raw"      => OutputMode::Raw,
                 "polished" => OutputMode::Polished,
                 "custom"   => OutputMode::Custom,
+                "markdown" => OutputMode::Markdown,
                 _          => OutputMode::Clean,
             };
             let state = app.state::<SharedSettings>();

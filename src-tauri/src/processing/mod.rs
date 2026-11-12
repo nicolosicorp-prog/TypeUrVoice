@@ -183,6 +183,20 @@ fn language_name(code: &str) -> &str {
     }
 }
 
+/// Markdown mode's output language: the explicit Markdown setting, else the
+/// translation target (also set by a shortcut's language — see the language
+/// switch in `run_pipeline`), else the spoken language.
+fn markdown_output_language(settings: &Settings, spoken: &str) -> String {
+    let explicit = settings.markdown_language.trim();
+    if !explicit.is_empty() && explicit != "auto" {
+        explicit.to_string()
+    } else if settings.translation_enabled && settings.target_language != "auto" {
+        settings.target_language.clone()
+    } else {
+        spoken.to_string()
+    }
+}
+
 /// Fall back to the raw transcript when the LLM returns empty text or errors,
 /// so the pipeline never pastes nothing. `mode` is "cleanup" or "polish" — used
 /// only in the log line.
@@ -248,10 +262,19 @@ pub async fn process(
     };
     let dict_hint = dictionary::format_for_prompt(&merged_dictionary);
 
+    let source_code = if settings.source_language == "auto" {
+        detected_language
+    } else {
+        &settings.source_language
+    };
+    let markdown = settings.output_mode == OutputMode::Markdown;
+
     // Step 1: Cleanup. When an occupation profile is active, the profile's
     // prompt drives everything (code-switching preserve rule, structure,
-    // language). Otherwise fall back to the user's OutputMode selection.
-    let processed = if let Some(prof) = &active_profile {
+    // language) — except in Markdown mode, an explicit choice of output
+    // shape (the profile's dictionary still applies). Otherwise fall back
+    // to the user's OutputMode selection.
+    let processed = if let Some(prof) = active_profile.as_ref().filter(|_| !markdown) {
         let profile_cfg = cfg
             .with_temperature(0.0)
             .with_max_tokens(Some(token_budget_for(raw_text, 1.0)));
@@ -285,19 +308,31 @@ pub async fn process(
                 }
             }
         }
+        OutputMode::Markdown => {
+            // Writes straight into the output language, so the translation
+            // step below is skipped for this mode.
+            let output_code = markdown_output_language(settings, source_code);
+            let md_cfg = cfg
+                .with_temperature(0.2)
+                .with_max_tokens(Some(token_budget_for(raw_text, 2.0)));
+            let result = cleanup::markdown(
+                http, raw_text, &md_cfg,
+                language_name(source_code), language_name(&output_code),
+                &settings.markdown_template, dict_hint.as_deref(), cleanup_hint.as_deref(),
+            ).await;
+            crate::log_to_file(&format!("Markdown: {} → {}", source_code, output_code));
+            fallback_to_raw(result, raw_text, "markdown")
+        }
     }};
 
     // Step 2: Translation (optional). Always 0.0 temperature — translation is
     // mechanical, deterministic. Source language passed through language_name
     // so prompts read "from Czech to English", not "from cs to English".
-    let source_code = if settings.source_language == "auto" {
-        detected_language
-    } else {
-        &settings.source_language
-    };
     // Same language on both sides: nothing to translate (the LLM would only
     // rewrite the text), so the processed text is the "translation".
-    let translated = if settings.translation_enabled && settings.target_language == source_code {
+    let translated = if markdown {
+        None
+    } else if settings.translation_enabled && settings.target_language == source_code {
         Some(processed.clone())
     } else if settings.translation_enabled && settings.target_language != "auto" {
         let source = language_name(source_code);
@@ -355,4 +390,64 @@ pub async fn test_processor(
         return Err(anyhow::anyhow!("Empty response from LLM"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn markdown_language_priority() {
+        let mut s = Settings::default();
+        assert_eq!(markdown_output_language(&s, "cs"), "cs");
+        s.translation_enabled = true;
+        s.target_language = "en".into();
+        assert_eq!(markdown_output_language(&s, "cs"), "en");
+        s.markdown_language = "de".into();
+        assert_eq!(markdown_output_language(&s, "cs"), "de");
+    }
+
+    #[test]
+    fn markdown_prompt_mentions_translation_and_template() {
+        let p = cleanup::build_markdown_prompt("Czech", "English", "## Goal\n## Requirements");
+        assert!(p.contains("translate from Czech"));
+        assert!(p.contains("<structure>\n## Goal\n## Requirements\n</structure>"));
+        let same = cleanup::build_markdown_prompt("Czech", "Czech", "  ");
+        assert!(!same.contains("translate from") && !same.contains("<structure>"));
+    }
+}
+
+/// Markdown mode against a running llama-server on real History entries:
+/// `TYPEURVOICE_LLM_URL=http://127.0.0.1:8090 TYPEURVOICE_HISTORY_DB=… TYPEURVOICE_IDS=77,78
+///  [TYPEURVOICE_MD_LANG=en] [TYPEURVOICE_MD_TEMPLATE='## Goal\n## Requirements']
+///  cargo test --release --lib markdown_history -- --ignored --nocapture`
+#[cfg(test)]
+mod markdown_replay {
+    #[test]
+    #[ignore]
+    fn markdown_history() {
+        let url = std::env::var("TYPEURVOICE_LLM_URL").expect("set TYPEURVOICE_LLM_URL");
+        let db = std::env::var("TYPEURVOICE_HISTORY_DB").expect("set TYPEURVOICE_HISTORY_DB");
+        let ids = std::env::var("TYPEURVOICE_IDS").expect("set TYPEURVOICE_IDS");
+        let lang = std::env::var("TYPEURVOICE_MD_LANG").unwrap_or_else(|_| "en".into());
+        let template = std::env::var("TYPEURVOICE_MD_TEMPLATE").unwrap_or_default().replace("\\n", "\n");
+        let conn = rusqlite::Connection::open(db).unwrap();
+        let mut settings = crate::state::Settings::default();
+        settings.output_mode = crate::state::OutputMode::Markdown;
+        settings.text_processor = crate::state::TextProcessor::BuiltIn;
+        settings.text_processor_url = url;
+        settings.source_language = "cs".into();
+        settings.markdown_language = lang;
+        settings.markdown_template = template;
+        let http = reqwest::Client::new();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        for id in ids.split(',') {
+            let raw: String = conn
+                .query_row("SELECT raw_text FROM transcriptions WHERE id = ?1", [id.trim()], |r| r.get(0))
+                .unwrap();
+            let t = std::time::Instant::now();
+            let out = rt.block_on(super::process(&raw, "cs", &settings, None, &http, &Default::default())).unwrap();
+            println!("── #{id} ({:?})\nCS:\n{raw}\n\nMD:\n{}\n", t.elapsed(), out.final_text);
+        }
+    }
 }

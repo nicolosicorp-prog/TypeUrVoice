@@ -4,6 +4,8 @@ import { Toggle } from '../ui/Toggle'
 import { Section } from '../ui/Section'
 import { RadioCard, RadioCardGroup } from '../ui/RadioCard'
 import { Button } from '../ui/Button'
+import { Select } from '../ui/Select'
+import { LANGUAGES } from '../../lib/constants'
 import { api } from '../../lib/tauri'
 import type { Settings, OutputMode, CustomProfile, OccupationProfile, AppLocale, Occupation } from '../../types'
 
@@ -16,6 +18,7 @@ const MODES: { value: OutputMode; label: string; desc: string }[] = [
   { value: 'raw',      label: 'Raw',      desc: 'Exact transcription. No cleanup.' },
   { value: 'clean',    label: 'Clean',    desc: 'Punctuation, grammar, filler removal.' },
   { value: 'polished', label: 'Polished', desc: 'Rewritten into clear, professional prose.' },
+  { value: 'markdown', label: 'Markdown', desc: 'A structured document — headings, lists — following what you ask for while dictating.' },
   { value: 'custom',   label: 'Custom',   desc: 'Apply one of your saved profiles to every transcription.' },
 ]
 
@@ -43,6 +46,12 @@ export function OutputTab({ settings, onUpdate }: Props) {
         </RadioCardGroup>
       </Section>
 
+      {settings.outputMode === 'markdown' && (
+        <Section title="Markdown">
+          <MarkdownPanel settings={settings} onUpdate={onUpdate} />
+        </Section>
+      )}
+
       {settings.outputMode === 'custom' && (
         <Section title="Custom Profiles">
           <ProfileManager settings={settings} onUpdate={onUpdate} />
@@ -69,6 +78,110 @@ export function OutputTab({ settings, onUpdate }: Props) {
           onChange={val => onUpdate({ showNotification: val })}
         />
       </Section>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Markdown mode
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_TEMPLATE_CHARS = 2000
+
+const TEMPLATE_PRESETS: { label: string; template: string }[] = [
+  {
+    label: 'Task for an AI agent',
+    template: '## Goal\n## Context\n## Requirements\n## Acceptance criteria',
+  },
+  {
+    label: 'Meeting notes',
+    template: '## Summary\n## Decisions\n## Action items',
+  },
+  {
+    label: 'Bug report',
+    template: '## Problem\n## Steps to reproduce\n## Expected\n## Actual',
+  },
+]
+
+function MarkdownPanel({ settings, onUpdate }: Props) {
+  const languageOptions = [
+    { value: 'auto', label: "Your shortcut's language" },
+    ...LANGUAGES.filter(l => l.code !== 'auto').map(l => ({ value: l.code, label: l.label })),
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+        Speak naturally and say what you want from the result as you go — for example
+        “make it a list”, “add a section about testing”, “leave the prices out”.
+        Those instructions are followed, not written into the text. Technical terms
+        such as <i>design</i> or <i>landing page</i> stay in English.
+      </div>
+
+      <Select
+        label="Write the document in"
+        value={settings.markdownLanguage || 'auto'}
+        onChange={e => onUpdate({ markdownLanguage: e.target.value })}
+        options={languageOptions}
+        description={
+          settings.markdownLanguage === 'auto' || !settings.markdownLanguage
+            ? "The language of the shortcut you pressed (or the Translation target). Dictate in Czech on your English shortcut to get an English document."
+            : 'Always this language, whichever shortcut you use.'
+        }
+      />
+
+      <div>
+        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)', fontWeight: 500, marginBottom: 4 }}>
+          Structure (optional)
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-2)', marginBottom: 'var(--sp-2)' }}>
+          {TEMPLATE_PRESETS.map(p => (
+            <Button
+              key={p.label}
+              variant="secondary"
+              size="sm"
+              onClick={() => onUpdate({ markdownTemplate: p.template })}
+            >
+              {p.label}
+            </Button>
+          ))}
+          {settings.markdownTemplate.trim() !== '' && (
+            <Button variant="ghost" size="sm" onClick={() => onUpdate({ markdownTemplate: '' })}>
+              Clear
+            </Button>
+          )}
+        </div>
+        <textarea
+          value={settings.markdownTemplate}
+          maxLength={MAX_TEMPLATE_CHARS}
+          onChange={e => onUpdate({ markdownTemplate: e.target.value.slice(0, MAX_TEMPLATE_CHARS) })}
+          aria-label="Markdown structure"
+          placeholder={'Leave empty to let the AI choose a structure, or write your own, e.g.\n## Goal\n## Requirements\n## Notes'}
+          style={{
+            width: '100%',
+            minHeight: 120,
+            background: 'var(--bg-secondary)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius)',
+            padding: '8px 10px',
+            fontSize: 'var(--text-sm)',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: 'var(--text-xs)',
+          color: 'var(--text-tertiary)',
+          marginTop: 4,
+        }}>
+          <span>Sections you say nothing about are left out.</span>
+          <span>{settings.markdownTemplate.length} / {MAX_TEMPLATE_CHARS}</span>
+        </div>
+      </div>
     </div>
   )
 }

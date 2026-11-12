@@ -11,6 +11,8 @@ mod logging;
 mod local_llm;
 mod knock;
 mod stream;
+mod hold_key;
+mod media;
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -484,6 +486,12 @@ async fn knock_available() -> bool {
     knock::is_available()
 }
 
+/// True where muting / pausing media while recording is implemented (macOS).
+#[tauri::command]
+async fn media_control_available() -> bool {
+    media::is_available()
+}
+
 /// Return provider metadata (display name, default model, recommended models,
 /// requires_key, key_slot, stable_catalog) for the *currently selected*
 /// provider. UI uses this to populate the model dropdown + show key inputs.
@@ -622,7 +630,26 @@ async fn show_crash_log() -> Result<(), String> {
     Ok(())
 }
 
-fn start_audio_capture(app: &AppHandle, language: Option<String>) {
+/// Show the recording bubble once the microphone actually delivers audio —
+/// the bubble is the user's cue to speak, so it must not appear before the
+/// first word can be heard. Called by whichever comes first: the first
+/// audio, or a 1 s fallback (a slow Bluetooth mic, or no mic at all).
+fn announce_recording(app: &AppHandle, started_at: std::time::Instant, shown: &AtomicBool, reason: &str) {
+    if shown.swap(true, Ordering::AcqRel) {
+        return;
+    }
+    log_to_file(&format!("Timing: mic {} after {}ms", reason, started_at.elapsed().as_millis()));
+    let still_recording = with_state(app, |s| {
+        s.recording_state == RecordingState::Recording && s.recording_started_at == Some(started_at)
+    });
+    if still_recording {
+        let _ = app.emit("recording-state", "recording");
+    }
+    show_overlay(app);
+}
+
+/// Returns when the recording started, or `None` if one was already running.
+fn start_audio_capture(app: &AppHandle, language: Option<String>) -> Option<std::time::Instant> {
     // Single atomic check-and-transition under the state mutex. Guards against
     // concurrent shortcut presses (primary + secondary fired nearly together)
     // that could otherwise both see Idle and double-start. Also allocates fresh
@@ -641,29 +668,54 @@ fn start_audio_capture(app: &AppHandle, language: Option<String>) {
             s.stop_flag = Arc::clone(&stop_flag);
             s.sample_rate = Arc::clone(&sample_rate);
             s.recording_state = RecordingState::Recording;
-            s.recording_started_at = Some(std::time::Instant::now());
+            let started_at = std::time::Instant::now();
+            s.recording_started_at = Some(started_at);
             s.active_language = language.clone();
             let capture_done = Arc::new(AtomicBool::new(false));
             s.capture_done = Arc::clone(&capture_done);
             let preview_busy = Arc::new(AtomicBool::new(false));
             s.preview_busy = Arc::clone(&preview_busy);
             s.stream = None;
-            Some((samples, stop_flag, sample_rate, capture_done, preview_busy))
+            Some((samples, stop_flag, sample_rate, capture_done, preview_busy, started_at))
         }
     });
-    let Some((samples, stop_flag, sample_rate_arc, capture_done, preview_busy)) = acquired else { return; };
+    let Some((samples, stop_flag, sample_rate_arc, capture_done, preview_busy, started_at)) = acquired else { return None; };
+
+    // Microphone first — everything else can happen while it starts. On
+    // its own thread: cpal::Stream is !Send on macOS.
+    let input_device = with_settings(app, |s| s.input_device.clone());
+    let shown = Arc::new(AtomicBool::new(false));
+    {
+        let (samples, sample_rate_arc, stop_flag, capture_done) =
+            (Arc::clone(&samples), Arc::clone(&sample_rate_arc), Arc::clone(&stop_flag), Arc::clone(&capture_done));
+        let (live_app, live_shown) = (app.clone(), Arc::clone(&shown));
+        let on_live: Box<dyn FnOnce() + Send> =
+            Box::new(move || announce_recording(&live_app, started_at, &live_shown, "live"));
+        std::thread::spawn(move || {
+            if let Err(e) = audio::capture::record_until_stopped(samples, sample_rate_arc, stop_flag, input_device, on_live) {
+                log_to_file(&format!("Recording error: {}", e));
+            }
+            capture_done.store(true, Ordering::Release);
+        });
+        let (fallback_app, fallback_shown) = (app.clone(), Arc::clone(&shown));
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            announce_recording(&fallback_app, started_at, &fallback_shown, "not delivering audio");
+        });
+    }
 
     // A profile-learning pass would hold the (single-slot) LLM while this
     // recording needs it — stop it; it runs again after the next recording.
     abort_learning();
 
+    // Mute / pause the Mac's sound before the mic opens (fast — CoreAudio
+    // property calls and at most one key event). Undone in the stop path.
+    let media_mode = with_settings(app, |s| s.media_while_recording);
+    media::quiet(&media_mode);
+
     eprintln!("[TypeUrVoice] Recording started (language: {:?})", language);
 
-    let _ = app.emit("recording-state", "recording");
-    show_overlay(app);
-
     let settings_now = with_settings(app, |s| s.clone());
-    let input_device = settings_now.input_device.clone();
     let streaming = stream_typing_active(&settings_now);
     let live = ((settings_now.live_preview || streaming) && settings_now.engine == state::Engine::Local).then(|| {
         let lang = language.clone().unwrap_or_else(|| settings_now.source_language.clone());
@@ -704,13 +756,7 @@ fn start_audio_capture(app: &AppHandle, language: Option<String>) {
         });
     }
 
-    // Spawn dedicated thread for cpal (Stream is !Send on macOS)
-    std::thread::spawn(move || {
-        if let Err(e) = audio::capture::record_until_stopped(samples, sample_rate_arc, stop_flag, input_device) {
-            eprintln!("[TypeUrVoice] Recording error: {}", e);
-        }
-        capture_done.store(true, Ordering::Release);
-    });
+    Some(started_at)
 }
 
 /// `trim_tail`: drop this much audio from the end of the recording before
@@ -736,6 +782,8 @@ fn stop_audio_capture_and_process(app: &AppHandle, trim_tail: Option<std::time::
         _ => None,
     });
     let Some((active_language, samples_arc, sample_rate_arc, capture_done, started_at, preview_busy, stream_session)) = captured else { return; };
+    // Sound back on / playback resumed as soon as the user stops speaking.
+    media::restore();
     let stopped_at = std::time::Instant::now();
     if let Some(t) = started_at {
         log_to_file(&format!("Timing: recorded {}ms", stopped_at.duration_since(t).as_millis()));
@@ -922,7 +970,12 @@ async fn run_pipeline(
             duration_secs, trimmed.len() as f64 / sample_rate as f64
         ));
     }
-    let samples: Vec<f32> = trimmed.to_vec();
+    // A moment of silence in front: Whisper tends to drop a first word that
+    // starts right at the first sample.
+    let lead = sample_rate as usize / 4;
+    let mut samples: Vec<f32> = Vec::with_capacity(lead + trimmed.len());
+    samples.resize(lead, 0.0);
+    samples.extend_from_slice(trimmed);
     let wav_bytes = audio::buffer::to_wav(&samples, sample_rate)?;
     let t_transcribe = std::time::Instant::now();
 
@@ -967,6 +1020,7 @@ async fn run_pipeline(
         transcript.language,
         safe_truncate(&transcript.text, 60),
     );
+
 
     if transcript.text.trim().is_empty() && prior.is_none() {
         // Distinguish "mic is dead" from "mic is fine but Whisper gave nothing".
@@ -1352,7 +1406,12 @@ fn join_nonempty(parts: &[String]) -> String {
 /// engine (it needs the live transcription), auto-paste on, and no summary
 /// (a summary needs the whole dictation first).
 fn stream_typing_active(s: &Settings) -> bool {
-    s.stream_typing && s.engine == state::Engine::Local && s.auto_paste && !s.summary_enabled
+    // Summary and Markdown both need the whole dictation at once.
+    s.stream_typing
+        && s.engine == state::Engine::Local
+        && s.auto_paste
+        && !s.summary_enabled
+        && s.output_mode != state::OutputMode::Markdown
 }
 
 fn save_to_history(
@@ -1520,8 +1579,9 @@ fn register_shortcut(app: &AppHandle, shortcut: &str, language: Option<String>) 
     if let Ok(sc) = shortcut.parse::<tauri_plugin_global_shortcut::Shortcut>() {
         let app_clone = app.clone();
         let lang = language.clone();
+        let key_code = hold_key::key_code(shortcut);
         let _ = app.global_shortcut().on_shortcut(sc, move |_app, _sc, event| {
-            on_shortcut(&app_clone, event.state(), lang.clone());
+            on_shortcut(&app_clone, event.state(), lang.clone(), key_code);
         });
         eprintln!("[TypeUrVoice] Shortcut registered: {} (lang: {:?})", shortcut, language);
     } else {
@@ -1529,14 +1589,31 @@ fn register_shortcut(app: &AppHandle, shortcut: &str, language: Option<String>) 
     }
 }
 
-fn on_shortcut(app: &AppHandle, shortcut_state: ShortcutState, language: Option<String>) {
+/// `key_code`: the shortcut's main key (see `hold_key`), used in Hold mode to
+/// check hot-key events against the key's physical state.
+fn on_shortcut(app: &AppHandle, shortcut_state: ShortcutState, language: Option<String>, key_code: Option<u16>) {
     let recording_mode = with_settings(app, |s| s.recording_mode.clone());
     let current_state = with_state(app, |s| s.recording_state.clone());
 
     match recording_mode {
         state::RecordingMode::Hold => match shortcut_state {
-            ShortcutState::Pressed => start_audio_capture(app, language),
+            ShortcutState::Pressed => {
+                if let Some(started_at) = start_audio_capture(app, language) {
+                    if let Some(code) = key_code {
+                        spawn_hold_watcher(app.clone(), code, started_at);
+                    }
+                }
+            }
             ShortcutState::Released => {
+                // A release event while the key is still physically held is
+                // false — it used to cut long dictations off mid-sentence.
+                // The hold watcher stops the recording at the real release.
+                if current_state == RecordingState::Recording
+                    && key_code.is_some_and(hold_key::is_down)
+                {
+                    log_to_file("Hold: release event while the key is still held — ignored");
+                    return;
+                }
                 if current_state == RecordingState::Recording {
                     // Enforce minimum 600ms recording so quick key releases
                     // don't produce empty/useless clips.
@@ -1569,7 +1646,7 @@ fn on_shortcut(app: &AppHandle, shortcut_state: ShortcutState, language: Option<
                 match current_state {
                     RecordingState::Recording => stop_audio_capture_and_process(app, None),
                     RecordingState::Idle | RecordingState::Done | RecordingState::Error(_) => {
-                        start_audio_capture(app, language)
+                        start_audio_capture(app, language);
                     }
                     RecordingState::Processing => {} // ignore while processing
                 }
@@ -1579,9 +1656,10 @@ fn on_shortcut(app: &AppHandle, shortcut_state: ShortcutState, language: Option<
 }
 
 /// A completed knock pattern (see `knock`): acts like a Toggle-mode press of
-/// the primary shortcut. `since_first_knock` is how long ago the pattern
-/// began, so a stopping knock can be cut out of the recording.
-fn on_knock(app: &AppHandle, since_first_knock: std::time::Duration) {
+/// a shortcut — which language depends on `Settings::knock_language` (and,
+/// in Split mode, on `knocks`). `since_first_knock` is how long ago the
+/// pattern began, so a stopping knock can be cut out of the recording.
+fn on_knock(app: &AppHandle, since_first_knock: std::time::Duration, knocks: usize) {
     // Margin covers the thump starting slightly before the detected peak
     // plus the few ms cpal keeps capturing after the stop flag is set.
     const TRIM_MARGIN: std::time::Duration = std::time::Duration::from_millis(150);
@@ -1592,11 +1670,55 @@ fn on_knock(app: &AppHandle, since_first_knock: std::time::Duration) {
         }
         RecordingState::Processing => log_to_file("Knock: ignored while processing"),
         RecordingState::Idle | RecordingState::Done | RecordingState::Error(_) => {
-            log_to_file("Knock: starting recording");
-            let language = with_settings(app, |s| s.primary_language.clone());
+            let language = with_settings(app, |s| match s.knock_language {
+                state::KnockLanguage::Primary => s.primary_language.clone(),
+                state::KnockLanguage::Secondary => s.secondary_language.clone(),
+                state::KnockLanguage::Split if knocks >= 3 => s.secondary_language.clone(),
+                state::KnockLanguage::Split => s.primary_language.clone(),
+                state::KnockLanguage::Auto => "auto".to_string(),
+            });
+            log_to_file(&format!("Knock: starting recording ({} knocks, language {})", knocks, language));
             start_audio_capture(app, Some(language));
         }
     }
+}
+
+/// Hold mode: stop the recording when the shortcut key is physically up
+/// but its release event never arrived (secure input, a dropped Carbon
+/// event). Only watches when the key reads as down right after the press —
+/// otherwise the key state can't be trusted (or it was a quick tap that the
+/// release event handles) and the events alone decide, as before.
+fn spawn_hold_watcher(app: AppHandle, code: u16, started_at: std::time::Instant) {
+    use std::time::Duration;
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(150));
+        if !hold_key::is_down(code) {
+            return;
+        }
+        let mut up_since: Option<std::time::Instant> = None;
+        loop {
+            std::thread::sleep(Duration::from_millis(50));
+            let same_recording = with_state(&app, |s| {
+                s.recording_state == RecordingState::Recording && s.recording_started_at == Some(started_at)
+            });
+            if !same_recording {
+                return;
+            }
+            if hold_key::is_down(code) {
+                up_since = None;
+                continue;
+            }
+            // Up long enough that a normal release event would have stopped
+            // the recording already (also past the 600 ms minimum).
+            let since = *up_since.get_or_insert_with(std::time::Instant::now);
+            let recorded = started_at.elapsed();
+            if since.elapsed() >= Duration::from_millis(400) && recorded >= Duration::from_millis(600) {
+                log_to_file("Hold: key released without a release event — stopping");
+                stop_audio_capture_and_process(&app, None);
+                return;
+            }
+        }
+    });
 }
 
 // ─── App Entry Point ─────────────────────────────────────────────────────────
@@ -1614,6 +1736,9 @@ pub fn run() {
     if let Some(msg) = storage::settings::migrate_legacy_data_dir() {
         log_to_file(&msg);
     }
+    // A previous run that crashed or was force-quit mid-recording may have
+    // left the Mac muted.
+    media::recover();
 
     // Install a panic hook that logs to file before crashing — stderr is lost in production
     let default_hook = std::panic::take_hook();
@@ -1770,6 +1895,7 @@ pub fn run() {
             get_builtin_llm_status,
             unload_builtin_llm,
             knock_available,
+            media_control_available,
             get_speaker_profile,
             save_speaker_profile,
             clear_speaker_profile,
@@ -1844,6 +1970,8 @@ pub fn run() {
                 }
                 tauri::RunEvent::Exit => {
                     eprintln!("[TypeUrVoice] Exit event — app shutting down");
+                    // Never leave the Mac muted or a video paused after Quit.
+                    media::restore();
                     // Never leave a multi-GB model server running after Quit.
                     if let Some(llm) = app.try_state::<SharedLlm>() {
                         llm.stop_now();

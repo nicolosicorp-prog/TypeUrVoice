@@ -1,7 +1,9 @@
 export type RecordingMode = 'hold' | 'toggle'
 export type KnockPattern = 'double' | 'triple'
 export type KnockSensitivity = 'low' | 'medium' | 'high'
-export type OutputMode = 'raw' | 'clean' | 'polished' | 'custom'
+export type KnockLanguage = 'primary' | 'secondary' | 'split' | 'auto'
+export type OutputMode = 'raw' | 'clean' | 'polished' | 'markdown' | 'custom'
+export type MediaWhileRecording = 'off' | 'mute' | 'pause'
 export type Engine = 'cloud' | 'local'
 export type CloudTranscriptionProvider = 'openai' | 'groq'
 
@@ -154,6 +156,14 @@ export interface Settings {
   knockEnabled: boolean
   knockPattern: KnockPattern
   knockSensitivity: KnockSensitivity
+  /** Language of knock-started recordings; 'split' = double → primary, triple → secondary. */
+  knockLanguage: KnockLanguage
+  /** Mute or pause the Mac's sound while recording (macOS). */
+  mediaWhileRecording: MediaWhileRecording
+  /** Markdown mode: structure to fill (free text, e.g. "## Goal"). Empty ⇒ model picks. */
+  markdownTemplate: string
+  /** Markdown mode: output language code, or 'auto' ⇒ shortcut/translation language, else spoken. */
+  markdownLanguage: string
   /** Built-in (on-device) LLM model key — see local_llm::models. */
   builtinLlmModel: string
   /** Load on recording start and unload when idle (true) vs keep loaded until Quit (false). */

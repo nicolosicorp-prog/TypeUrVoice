@@ -20,6 +20,34 @@ pub enum RecordingMode {
     Toggle,
 }
 
+/// What happens to the Mac's sound while recording — see `media`.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum MediaWhileRecording {
+    #[default]
+    Off,
+    /// Mute the output device, unmute when the recording stops.
+    Mute,
+    /// Press Play/Pause if something is playing, press it again after.
+    Pause,
+}
+
+/// Which language a knock-started recording uses.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum KnockLanguage {
+    /// The primary shortcut's language.
+    #[default]
+    Primary,
+    /// The secondary shortcut's language.
+    Secondary,
+    /// Double knock = primary, triple knock = secondary (`knock_pattern`
+    /// is ignored).
+    Split,
+    /// Whisper detects the spoken language; output stays in it.
+    Auto,
+}
+
 /// How many knocks on the MacBook chassis toggle recording.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -54,6 +82,10 @@ pub enum OutputMode {
     /// Apply a user-defined prompt from `Settings::custom_prompt`.
     /// Empty prompt ⇒ behave as Raw (skip the LLM round-trip entirely).
     Custom,
+    /// Turn the dictation into a structured Markdown document, following
+    /// any instructions spoken in it ("make it a list", "in English") and
+    /// the optional `Settings::markdown_template` — see `cleanup::markdown`.
+    Markdown,
 }
 
 impl OutputMode {
@@ -63,6 +95,7 @@ impl OutputMode {
             OutputMode::Clean => "clean",
             OutputMode::Polished => "polished",
             OutputMode::Custom => "custom",
+            OutputMode::Markdown => "markdown",
         }
     }
 }
@@ -412,6 +445,15 @@ pub struct Settings {
     pub knock_enabled: bool,
     pub knock_pattern: KnockPattern,
     pub knock_sensitivity: KnockSensitivity,
+    pub knock_language: KnockLanguage,
+    /// Mute or pause the Mac's sound while recording (macOS).
+    pub media_while_recording: MediaWhileRecording,
+    /// Markdown mode: the structure to fill (headings, sections — free
+    /// text). Empty ⇒ the model picks a structure that fits the dictation.
+    pub markdown_template: String,
+    /// Markdown mode: output language code, or "auto" ⇒ the shortcut's /
+    /// translation target language, else the spoken one.
+    pub markdown_language: String,
     /// Built-in (on-device) LLM: which GGUF from `local_llm::models`.
     pub builtin_llm_model: String,
     /// ON: load the model when recording starts, unload after
@@ -490,6 +532,10 @@ impl Default for Settings {
             knock_enabled: false,
             knock_pattern: KnockPattern::Double,
             knock_sensitivity: KnockSensitivity::Medium,
+            knock_language: KnockLanguage::Primary,
+            media_while_recording: MediaWhileRecording::Off,
+            markdown_template: String::new(),
+            markdown_language: "auto".to_string(),
             builtin_llm_model: crate::local_llm::models::DEFAULT_MODEL.to_string(),
             builtin_llm_auto: true,
             builtin_llm_idle_minutes: 5,

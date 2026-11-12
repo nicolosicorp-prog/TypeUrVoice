@@ -69,10 +69,13 @@ pub fn build_input(
     for e in entries.iter().rev() {
         // processed_text is in the spoken language (a History fix to a
         // cleanup lands there too); translations live in the corrections.
+        // Markdown mode restructures (and may translate) the dictation, so
+        // its output says nothing about recognition — show the transcript.
+        let final_text = if e.mode == "markdown" { &e.raw_text } else { &e.processed_text };
         let block = format!(
             "RECOGNIZED: {}\nFINAL: {}\n",
             cap(&e.raw_text, MAX_ENTRY_CHARS),
-            cap(&e.processed_text, MAX_ENTRY_CHARS)
+            cap(final_text, MAX_ENTRY_CHARS)
         );
         let len = block.chars().count();
         if used + len > MAX_INPUT_CHARS {

@@ -62,15 +62,7 @@ impl WhisperCache {
         }
 
         // Slow path: load. Do NOT hold the mutex across this call.
-        let model_str = model_path.to_string_lossy();
-        // GPU (Metal) is on by default when whisper-rs is built with the
-        // `metal` feature. Flash attention cuts decoder time further on the
-        // GPU path; we don't use DTW token timestamps, so nothing is lost.
-        let mut params = WhisperContextParameters::default();
-        params.flash_attn(cfg!(target_os = "macos"));
-        let ctx = WhisperContext::new_with_params(model_str.as_ref(), params)
-        .context("Failed to load Whisper model")?;
-        let ctx = Arc::new(ctx);
+        let ctx = load_uncached(model_path)?;
 
         {
             let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
@@ -122,4 +114,17 @@ impl WhisperCache {
         let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         *guard = None;
     }
+}
+
+/// Load a model from disk (no caching).
+fn load_uncached(model_path: &std::path::Path) -> Result<Arc<WhisperContext>> {
+    let model_str = model_path.to_string_lossy();
+    // GPU (Metal) is on by default when whisper-rs is built with the
+    // `metal` feature. Flash attention cuts decoder time further on the
+    // GPU path; we don't use DTW token timestamps, so nothing is lost.
+    let mut params = WhisperContextParameters::default();
+    params.flash_attn(cfg!(target_os = "macos"));
+    let ctx = WhisperContext::new_with_params(model_str.as_ref(), params)
+        .context("Failed to load Whisper model")?;
+    Ok(Arc::new(ctx))
 }
