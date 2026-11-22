@@ -152,6 +152,7 @@ async fn update_settings(
         sync_builtin_llm(&app);
     }
     knock::sync(&app);
+    sync_autostart(&app);
     // Keep tray menu checkmarks in sync with settings UI
     tray::refresh_menu(&app);
     Ok(())
@@ -451,6 +452,38 @@ fn warm_builtin_llm(app: &AppHandle) {
     tauri::async_runtime::spawn(async move {
         let _ = llm.ensure_running(&app, &model).await;
     });
+}
+
+/// Make the OS login item match `start_on_login`. The toggle used to only
+/// write settings.json — nothing ever registered a LaunchAgent / Run key.
+/// Called at launch (also rewrites the plist so it points at the current
+/// install location) and on every settings save.
+fn sync_autostart(app: &AppHandle) {
+    use tauri_plugin_autostart::ManagerExt;
+    let want = with_settings(app, |s| s.start_on_login);
+    // Never register a dev binary (target/debug/typeurvoice) as a login item.
+    #[cfg(target_os = "macos")]
+    if want {
+        let in_bundle = std::env::current_exe()
+            .map(|p| p.to_string_lossy().contains(".app/Contents/MacOS/"))
+            .unwrap_or(false);
+        if !in_bundle {
+            log_to_file("Autostart: not running from an .app bundle — login item not registered");
+            return;
+        }
+    }
+    let manager = app.autolaunch();
+    let result = if want {
+        manager.enable()
+    } else if manager.is_enabled().unwrap_or(false) {
+        manager.disable()
+    } else {
+        return;
+    };
+    match result {
+        Ok(()) => log_to_file(&format!("Autostart: login item {}", if want { "enabled" } else { "disabled" })),
+        Err(e) => log_to_file(&format!("Autostart: failed to {} login item: {e}", if want { "enable" } else { "disable" })),
+    }
 }
 
 /// Reconcile the server with settings: keep-loaded mode loads it now; a
@@ -1948,6 +1981,7 @@ pub fn run() {
             sync_builtin_llm(&app.handle());
             tauri::async_runtime::spawn(local_llm::server::run_idle_watcher(app.handle().clone()));
             knock::sync(&app.handle());
+            sync_autostart(&app.handle());
 
             eprintln!("[TypeUrVoice] App started — ready");
             Ok(())

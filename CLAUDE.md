@@ -1341,3 +1341,22 @@ macOS-only, with no-op stand-ins on Windows (compiles; feature simply absent / h
 - Mute recovery marker — part of media.
 
 Not verified: no Windows toolchain on the Mac (MSVC C deps), so the Windows compile was reviewed, not run. Build it on Windows after merging.
+
+---
+
+## Start on Login Fix (November 2026)
+
+**Bug:** "Start on login" never did anything. The toggle only wrote `startOnLogin` to settings.json; `tauri-plugin-autostart` was registered (and allowed in capabilities) but nothing ever called `enable()`, so no LaunchAgent existed.
+
+**Fix:** `sync_autostart()` in `lib.rs`, called at the end of `setup()` and in `update_settings`:
+- `start_on_login = true` → `autolaunch().enable()`, which (re)writes `~/Library/LaunchAgents/TypeUrVoice.plist` pointing at the running binary. Running it on every launch keeps the path right if the app moves.
+- `false` → `disable()` only if a login item exists.
+- macOS: skipped when the binary isn't inside a `.app` bundle, so `npm run tauri dev` never registers `target/debug/typeurvoice`.
+- Existing users with the toggle already on get the login item on the first launch of the fixed build — no re-toggle needed.
+- macOS may show "Background item added"; if the user switches TypeUrVoice off in System Settings → General → Login Items, launchd won't run it even though the plist exists.
+
+crash.log: `Autostart: login item enabled|disabled`, `Autostart: failed to … login item: …`, `Autostart: not running from an .app bundle — login item not registered`.
+
+Verified: release build installed in /Applications created the plist on launch and logged `Autostart: login item enabled`. An actual logout/login was not tried.
+
+Windows: the same plugin call writes the HKCU Run key — not built or tested on Windows.
