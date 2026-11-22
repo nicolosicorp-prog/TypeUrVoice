@@ -1954,6 +1954,7 @@ pub fn run() {
             }
 
             tray::build_tray(&app.handle())?;
+            log_to_file("Tray: menu bar icon created");
             // Cmd+Q intercept is registered once here, not from re_register_shortcuts,
             // so it survives every settings save (which only re-binds primary/secondary).
             register_cmd_q_intercept(&app.handle());
@@ -2010,6 +2011,35 @@ pub fn run() {
                     if let Some(llm) = app.try_state::<SharedLlm>() {
                         llm.stop_now();
                     }
+                    // Leave without running C++ static destructors: ggml's
+                    // Metal device destructor aborts (SIGABRT in
+                    // ggml_metal_rsets_free) while the cached WhisperContext
+                    // still holds GPU buffers, so every Quit produced a crash
+                    // report. Our own state is already saved at this point.
+                    log_to_file("Exit: quitting");
+                    #[cfg(target_os = "macos")]
+                    {
+                        extern "C" {
+                            fn _exit(code: i32) -> !;
+                        }
+                        unsafe { _exit(0) }
+                    }
+                }
+                // Opening the app (Finder, Spotlight, Launchpad, login item)
+                // while it is already running: bring Settings back. Without
+                // this, a hidden menu-bar icon left no way back in.
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Reopen { .. } => {
+                    tray::open_settings(app);
+                    // Re-opening a running menu-bar app makes macOS promote it
+                    // to a regular Dock app. Put it back, once now and once
+                    // after LaunchServices has finished the activation.
+                    let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    let handle = app.clone();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(400));
+                        let _ = handle.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    });
                 }
                 _ => {}
             }

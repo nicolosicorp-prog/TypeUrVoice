@@ -1360,3 +1360,16 @@ crash.log: `Autostart: login item enabled|disabled`, `Autostart: failed to … l
 Verified: release build installed in /Applications created the plist on launch and logged `Autostart: login item enabled`. An actual logout/login was not tried.
 
 Windows: the same plugin call writes the HKCU Run key — not built or tested on Windows.
+
+---
+
+## Menu Bar App Fixes (November 2026)
+
+User report: after closing Settings with the red X the app "was gone" — no menu bar icon, then it showed up in the Dock.
+
+1. **Reopen brings Settings back** — `RunEvent::Reopen` (macOS) → `tray::open_settings`. Opening TypeUrVoice from Finder/Spotlight/Launchpad while it runs used to do nothing visible, so with a hidden menu bar icon there was no way back in.
+2. **Stays out of the Dock** — reopening a running Accessory app makes macOS promote it to a regular (Dock) app. The Reopen handler re-applies `ActivationPolicy::Accessory` immediately and again after 400 ms. Verified with `lsappinfo`: `type="UIElement"` after launch, red X, and repeated reopens.
+3. **Quit no longer crashes** — every Quit (tray, `osascript quit`, logout) aborted in a C++ static destructor: `ggml_metal_device_free` → `ggml_metal_rsets_free` → `ggml_abort` while the cached WhisperContext still held GPU buffers (since Metal was enabled in Oct). `RunEvent::Exit` now does its cleanup (media restore, llama-server stop), logs `Exit: quitting`, then calls `_exit(0)` to skip static destructors. Verified: no new `~/Library/Logs/DiagnosticReports/typeurvoice-*.ips`.
+4. crash.log now logs `Tray: menu bar icon created` at launch.
+
+**Missing menu bar icon was macOS, not the app:** changing the signing team makes macOS treat the build as a new app and hide its status item. Fix: System Settings → Menu Bar → "Allow in the Menu Bar" → TypeUrVoice on (plus re-grant Accessibility). On this macOS, status items can't be inspected from outside (no AXExtrasMenuBar, no layer-25 windows), so the crash.log line is the only in-app evidence.

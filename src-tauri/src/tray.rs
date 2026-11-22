@@ -150,7 +150,7 @@ pub fn refresh_menu<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-fn open_settings<R: Runtime>(app: &AppHandle<R>) {
+pub(crate) fn open_settings<R: Runtime>(app: &AppHandle<R>) {
     if let Some(w) = app.get_webview_window("settings") {
         let _ = w.show();
         let _ = w.set_focus();
